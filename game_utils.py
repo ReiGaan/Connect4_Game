@@ -1,0 +1,237 @@
+from typing import Callable, Optional, Any
+from enum import Enum
+import numpy as np
+    
+BOARD_COLS = 7
+BOARD_ROWS = 6
+BOARD_SHAPE = (6, 7)
+INDEX_HIGHEST_ROW = BOARD_ROWS - 1
+INDEX_LOWEST_ROW = 0
+
+BoardPiece = np.int8  # The data type (dtype) of the board pieces
+NO_PLAYER = BoardPiece(0)  # board[i, j] == NO_PLAYER where the position is empty
+PLAYER1 = BoardPiece(1)  # board[i, j] == PLAYER1 where player 1 (player to move first) has a piece
+PLAYER2 = BoardPiece(2)  # board[i, j] == PLAYER2 where player 2 (player to move second) has a piece
+
+BoardPiecePrint = str  # dtype for string representation of BoardPiece
+NO_PLAYER_PRINT = BoardPiecePrint(' ')
+PLAYER1_PRINT = BoardPiecePrint('X')
+PLAYER2_PRINT = BoardPiecePrint('O')
+
+PlayerAction = np.int8  # The column to be played
+
+class GameState(Enum):
+    IS_WIN = 1
+    IS_DRAW = -1
+    STILL_PLAYING = 0
+    IS_LOST = -100
+
+class MoveStatus(Enum):
+    IS_VALID = 1
+    WRONG_TYPE = 'Input does not have the correct type (PlayerAction).'
+    OUT_OF_BOUNDS = 'Input is out of bounds.'
+    FULL_COLUMN = 'Selected column is full.'
+
+class SavedState:
+    pass
+
+GenMove = Callable[
+    [np.ndarray, BoardPiece, Optional[SavedState]],  # Arguments for the generate_move function
+    tuple[PlayerAction, Optional[SavedState]]  # Return type of the generate_move function
+]
+
+
+def initialize_game_state() -> np.ndarray:
+    """
+    Returns an ndarray, shape BOARD_SHAPE and data type (dtype) BoardPiece, initialized to 0 (NO_PLAYER).
+    """
+    return np.full(BOARD_SHAPE, NO_PLAYER, dtype=BoardPiece)
+
+def pretty_print_board(board: np.ndarray) -> str:
+    """
+    Should return `board` converted to a human readable string representation,
+    to be used when playing or printing diagnostics to the console (stdout). The piece in
+    board[0, 0] of the array should appear in the lower-left in the printed string representation. 
+    Here's an example output, note that we use PLAYER1_Print to represent PLAYER1 and PLAYER2_Print to represent PLAYER2):
+    |==============|
+    |              |
+    |              |
+    |    X X       |
+    |    O X X     |
+    |  O X O O     |
+    |  O O X X     |
+    |==============|
+    |0 1 2 3 4 5 6 |
+    """
+    piece_to_char = {
+        NO_PLAYER: NO_PLAYER_PRINT,
+        PLAYER1: PLAYER1_PRINT,
+        PLAYER2: PLAYER2_PRINT
+    }
+        
+    border = "|==============|"
+    column_indices = "|0 1 2 3 4 5 6 |"
+    rows = []
+    rows.append(border)  # Top border
+    # Flip board to match that [0,0] is lower-left
+    for row in board:
+        line = "|"
+        for cell in row:
+            line += piece_to_char[cell] + " "
+        line += "|"
+        rows.append(line)
+    rows.append(border)         # Bottom border
+    rows.append(column_indices)  # Column indices
+
+    return "\n".join(rows)
+    
+
+def string_to_board(pp_board: str) -> np.ndarray:
+    """
+    Takes the output of pretty_print_board and turns it back into an ndarray.
+    This is quite useful for debugging, when the agent crashed and you have the last
+    board state as a string.
+    """
+    char_to_piece = {
+        NO_PLAYER_PRINT: NO_PLAYER,
+        PLAYER1_PRINT: PLAYER1,
+        PLAYER2_PRINT: PLAYER2
+    }
+    
+    pp_board = pp_board.splitlines()
+    board_array = np.zeros(BOARD_SHAPE, dtype=int)
+    
+    for i, row in enumerate(pp_board[1:-2]): 
+        column = 0
+        for j, cell in enumerate(row[1:-3]):
+            if j%2 == 0:
+                board_array[i,column] = char_to_piece[cell]
+                column += 1
+    return board_array
+            
+
+
+def apply_player_action(board: np.ndarray, action: PlayerAction, player: BoardPiece):
+    """
+    Sets board[i, action] = player, where i is the lowest open row. The input 
+    board should be modified in place, such that it's not necessary to return 
+    something.
+    """
+    set_value = False
+    for row in reversed(range(BOARD_ROWS)):
+        if board[row, action] == NO_PLAYER:
+            board[row, action] = player
+            set_value = True
+            break
+    if not set_value:                             
+        raise ValueError(f"Column {action+1} is full.")
+    
+
+def connected_four(board: np.ndarray, player: BoardPiece) -> bool:
+    """
+    Returns True if there are four adjacent pieces equal to `player` arranged
+    in either a horizontal, vertical, or diagonal line. Returns False otherwise.
+    """
+    num_player = np.count_nonzero(board == player)   
+    
+    if num_player >= 4: 
+        if test_connect_horizontal(board, player) or test_connect_vertical(board, player) or test_connect_diagonal(board, player): 
+            return True
+        else: 
+            return False
+    else: 
+        return False
+    
+def test_connect_horizontal(board: np.ndarray, player: BoardPiece) -> bool: 
+    """
+    Returns True if there are four adjacent pieces equal to `player` arranged
+    in horizontal. Returns False otherwise.
+    """
+    for row in board:
+        for col in range(len(row) - 3): # Only start where 4 in a row is possible
+            if np.all(row [col:col+4] == player):
+                return True
+    return False
+
+def test_connect_vertical(board: np.ndarray, player: BoardPiece) -> bool: 
+    """
+    Returns True if there are four adjacent pieces equal to `player` arranged in a 
+    vertical line. Returns False otherwise.
+    """
+    for col in range(board.shape[1]):
+        for row in range(board.shape[0] - 3): 
+            if np.all(board[row:row+4, col] == player):
+                return True
+    return False
+
+def test_connect_diagonal(board: np.ndarray, player: BoardPiece) -> bool: 
+    """
+    Returns True if there are four adjacent pieces equal to `player` arranged
+    in a diagonal line. Returns False otherwise.
+    """
+    for row in range(board.shape[0] - 3): 
+        for col in range(board.shape[1] - 3):  
+            diagonal = board[row:row+4, col:col+4].diagonal() # Check top-left to bottom-right diagonals
+            diagonal_flipped = np.fliplr(board[row:row+4, col:col+4]).diagonal() # Check bottom-left to top-right diagonals
+    
+            if np.all(diagonal == player) or np.all(diagonal_flipped == player): 
+                return True
+    return False
+ 
+def check_end_state(board: np.ndarray, player: BoardPiece) -> GameState:
+    """
+    Returns the current game state for the current `player`, i.e. has their last
+    action won (GameState.IS_WIN) or drawn (GameState.IS_DRAW) the game, 
+    or is play still on-going (GameState.STILL_PLAYING)? Or if the opponent GameState is win, mean 
+    this player lost. 
+    """
+    opponent = get_opponent(player)
+    player_won = connected_four(board, player)
+    opponent_won = connected_four(board, opponent)
+    
+    if player_won: 
+        return GameState.IS_WIN
+    elif opponent_won: 
+        return GameState.IS_LOST
+    elif all(check_move_status(board, PlayerAction(col)) == MoveStatus.FULL_COLUMN
+                for col in range(board.shape[1])): 
+            return GameState.IS_DRAW
+    else: 
+        return GameState.STILL_PLAYING
+            
+
+def get_opponent(player: BoardPiece) -> BoardPiece:
+    """
+    Returns the opposite player from the current `player`. 
+    """
+    if player == PLAYER1:
+        return PLAYER2
+    elif player == PLAYER2:
+        return PLAYER1
+    else:
+        raise ValueError(f"Invalid player: {player}")
+
+def check_move_status(board: np.ndarray, column: Any) -> MoveStatus:
+    """
+    Returns a MoveStatus indicating whether a move is accepted as a valid move 
+    or not, and if not, why.
+    The provided column must be of the correct type (PlayerAction).
+    Furthermore, the column must be within the bounds of the board and the
+    column must not be full.
+    """
+    
+    #Check Type of column
+    if not isinstance(column, PlayerAction):
+        return MoveStatus.WRONG_TYPE
+    
+    # Check if the column is within bounds
+    if column < 0 or column >= BOARD_COLS:
+        return MoveStatus.OUT_OF_BOUNDS
+    
+    # Check if the column is full
+    if board[0, column] != NO_PLAYER:
+        return MoveStatus.FULL_COLUMN
+    
+    # If neither of the above conditions are met, the move is valid
+    return MoveStatus.IS_VALID 
+
