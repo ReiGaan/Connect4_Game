@@ -3,6 +3,7 @@ import time
 from game_utils import PLAYER1, PLAYER2, PLAYER1_PRINT, PLAYER2_PRINT, GameState, MoveStatus, GenMove
 from game_utils import initialize_game_state, pretty_print_board, apply_player_action, check_end_state, check_move_status
 from agents.agent_human_user import user_move
+from agents.agent_random import generate_move as random_move
 
 def human_vs_agent(
     generate_move_1: GenMove,
@@ -65,4 +66,5 @@ def human_vs_agent(
 
 
 if __name__ == "__main__":
-    human_vs_agent(user_move)
+    #human_vs_agent(user_move) play against myself
+    human_vs_agent(random_move, user_move, player_1="Random Agent", player_2="Anina") #play against random
