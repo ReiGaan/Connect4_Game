@@ -188,7 +188,6 @@ def check_end_state(board: np.ndarray, player: BoardPiece) -> GameState:
     opponent = get_opponent(player)
     player_won = connected_four(board, player)
     opponent_won = connected_four(board, opponent)
-    
     if player_won: 
         return GameState.IS_WIN
     elif opponent_won: 
