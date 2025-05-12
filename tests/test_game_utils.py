@@ -339,3 +339,40 @@ def test_check_end_state():
     assert(check_end_state(board_full, PLAYER1)) == GameState.IS_DRAW
     board_full[0,:] = NO_PLAYER
     assert(check_end_state(board_full, PLAYER2)) == GameState.STILL_PLAYING
+
+def test_mcts_never_plays_illegal_move():
+    from game_utils import BoardPiece, MoveStatus, check_move_status, apply_player_action, NO_PLAYER, PLAYER1,PLAYER2
+    from agents.agent_MCTS.mcts import mcts_move  
+
+    num_trials = 4
+
+    for i in range(num_trials):
+        
+        board = np.array([
+        [NO_PLAYER, PLAYER1, PLAYER2, NO_PLAYER, PLAYER2, PLAYER1, PLAYER2],
+        [PLAYER1, PLAYER2, PLAYER2, PLAYER1, PLAYER1, PLAYER2, PLAYER1],
+        [PLAYER2, PLAYER1, PLAYER1, PLAYER2, PLAYER2, PLAYER1, PLAYER2],
+        [PLAYER1, PLAYER2, PLAYER1, PLAYER1, PLAYER1, PLAYER2, PLAYER2],
+        [PLAYER1, PLAYER2, PLAYER1, PLAYER2, PLAYER2, PLAYER1, PLAYER1],
+        [PLAYER2, PLAYER1, PLAYER2, PLAYER1, PLAYER1, PLAYER1, PLAYER2]
+        ])
+
+        player = BoardPiece(1)  # e.g., player 1
+        saved_state = None
+
+        action, saved_state = mcts_move(board.copy(), player, saved_state)
+
+        try:
+            action, saved_state = mcts_move(board.copy(), player, saved_state)
+            move_status = check_move_status(board, action)
+            assert move_status == MoveStatus.IS_VALID
+        except AssertionError:
+            print(f"\n❌ Test failed on iteration {i}")
+            print("Board before move:\n", board)
+            print("Action selected:", action)
+            print("Saved node state:\n", saved_state.state if saved_state else "None")
+            print("Valid moves from board:", [
+                c for c in range(board.shape[1])
+                if check_move_status(board, c) == MoveStatus.IS_VALID
+            ])
+            raise
