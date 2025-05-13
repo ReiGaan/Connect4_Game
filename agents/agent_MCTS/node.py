@@ -1,5 +1,5 @@
 import numpy as np
-from game_utils import PlayerAction, check_move_status, MoveStatus, PLAYER1, PLAYER2
+from game_utils import PlayerAction, BoardPiece, check_move_status, MoveStatus, PLAYER1, PLAYER2,NO_PLAYER
 
 
 class Node:
@@ -11,11 +11,11 @@ class Node:
         parent (Node | None): The parent node in the search tree.
         children (dict): A dictionary mapping actions to child nodes.
         visits (int): Number of times this node has been visited.
-        wins (float): Simulation result scores for this node winning.
+        wins (dict): Simulation result scores for this node winning for both player (Player == key).
         untried_actions (list): List of actions not yet tried from this state.
     """
 
-    def __init__(self, state, parent=None):
+    def __init__(self, state: np.ndarray, parent=None):
         if not isinstance(state, np.ndarray):
             raise TypeError(f"Expected state to be a np.ndarray, got {type(state)}")
 
@@ -26,7 +26,7 @@ class Node:
         self.wins = {PLAYER1: 0, PLAYER2: 0}
         self.untried_actions = self.get_valid_moves()
 
-    def refresh_children(self):
+    def refresh_children(self) -> None:
         """
         Refresh the node's valid children and untried actions to reflect current state.
         Removes children whose moves are no longer valid.
@@ -38,22 +38,16 @@ class Node:
         self.untried_actions = list(set(valid_moves) - set(self.children.keys()))
 
 
-    def get_valid_moves(self):
+    def get_valid_moves(self) -> list[int]:
         """
         Compute the list of valid moves from the current Node.
 
         Returns:
             list[int]: A list of column indices that are valid moves.
         """
+        return list(np.where(self.state[0, :] == NO_PLAYER)[0])
 
-        valid_moves = [
-            col
-            for col in range(self.state.shape[1])
-            if check_move_status(self.state, PlayerAction(col)) == MoveStatus.IS_VALID
-        ]
-        return valid_moves
-
-    def expand(self, action, next_state):
+    def expand(self, action: PlayerAction, next_state: np.ndarray) -> 'Node':
         """
         Expand the current node by adding a child node for the given action.
 
@@ -69,7 +63,7 @@ class Node:
         self.untried_actions.remove(action)
         return child_node
 
-    def is_fully_expanded(self):
+    def is_fully_expanded(self) -> bool:
         """
         Check whether all possible actions from this node have been tried.
 
@@ -78,14 +72,15 @@ class Node:
         """
         return len(self.untried_actions) == 0
 
-    def uct(self, node, parent_visits, player):
+    def uct(self, node: 'Node', parent_visits: int, player: BoardPiece) -> float:
         """
         Calculate the Upper Confidence Bound (UCT) score for a child node.
 
         Args:
             node (Node): The child node to evaluate.
             parent_visits (int): The number of visits to the parent node.
-
+            player (BoardPiece): The current player
+            
         Returns:
             float: The UCT score for the node.
         """
@@ -96,7 +91,7 @@ class Node:
         uct = win_ratio + np.sqrt(2) * explore
         return uct
     
-    def best_child(self, player):
+    def best_child(self, player: 'BoardPiece') -> 'Node':
         """
         Select the child node with the highest UCT score.
         

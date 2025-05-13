@@ -12,13 +12,13 @@ from game_utils import (
     PLAYER1, PLAYER2
 )
 from .Node import Node
-from game_utils import PLAYER1, PLAYER2
 
-iterationnumber = 2000
+
+iterationnumber = 5000
 
 
 def mcts_move(
-    board: np.ndarray, root_player: BoardPiece, saved_state: SavedState | None
+    board: np.ndarray, root_player: BoardPiece, saved_state: SavedState | None,
 ) -> tuple[PlayerAction, SavedState | None]:
     """
     Perform next move of agent using the Monte Carlo Tree Search (MCTS) algorithm.
@@ -50,7 +50,7 @@ def mcts_move(
 
         # === EXPANSION ===
         if not node.is_fully_expanded():
-            action, next_state = simulate_next_step(player, node)
+            action, next_state = expand_to_next_children(player, node)
             child_node = node.expand(action, next_state) 
             player = get_opponent(player)
             node = child_node
@@ -71,7 +71,7 @@ def mcts_move(
     return action, saved_state
 
 
-def simulate(node: Node, player: BoardPiece) -> int:
+def simulate(node: Node, player: BoardPiece) -> dict[BoardPiece, int]:
     """
     Simulate the following game turns from the current node using random play until the game ends.
 
@@ -80,7 +80,7 @@ def simulate(node: Node, player: BoardPiece) -> int:
         root_player (BoardPiece): The player whose turn it is.
         
     Returns:
-        int: 1 if player_agent wins, -1 if player_agent loses, 0.5 for a draw.
+        dict[BoardPiece, int]: Mapping of each player to their simulation result score.
     """
     node_state = node.state.copy()
 
@@ -104,14 +104,13 @@ def simulate(node: Node, player: BoardPiece) -> int:
     elif result == GameState.IS_DRAW:
         return {PLAYER1: 0, PLAYER2: 0}
 
-def backpropagate(node: Node, result: int):
+def backpropagate(node: Node, result: dict[BoardPiece, int]) -> None:
     """
     Backpropagate the result of a simulation, updating win and visit counts.
 
     Args:
         node (Node): The leaf node where the simulation ended.
-        result (int): Simulation result (1 for win, -1 for loss, 0.5 for draw).
-        root_player (BoardPiece): The original player making the MCTS move.
+        result (dict[BoardPiece, int]): Simulation result mapping for each player.
     """
     current = node
     
@@ -129,7 +128,7 @@ def backpropagate(node: Node, result: int):
         current = current.parent
 
 
-def simulate_next_step(player, node):
+def expand_to_next_children(player: BoardPiece, node: Node) -> tuple[PlayerAction, np.ndarray]:
     """
     Select and apply a random untried valid move from the current node's state.
 
@@ -141,13 +140,11 @@ def simulate_next_step(player, node):
         tuple[PlayerAction, np.ndarray]: The selected action and the resulting game state.
     """
     action = np.random.choice(node.untried_actions)
-    player_action = PlayerAction(action)
     next_state = node.state.copy()
-    player_action = PlayerAction(action)
-    next_state = node.state.copy()
-    apply_player_action(next_state, player_action, player)
-    #else:
-    #    apply_player_action(next_state, player_action, player)
+    apply_player_action(next_state, PlayerAction(action), player)
+
     if next_state is None:
         print("apply_player_action returned None!")
-    return player_action, next_state
+    return PlayerAction(action), next_state
+
+
