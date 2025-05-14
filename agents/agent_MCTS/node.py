@@ -1,5 +1,5 @@
 import numpy as np
-from game_utils import PlayerAction, BoardPiece, check_move_status, MoveStatus, PLAYER1, PLAYER2,NO_PLAYER
+from game_utils import connected_four, PlayerAction, check_move_status, MoveStatus, BOARD_COLS, BoardPiece, PLAYER1, PLAYER2,NO_PLAYER
 
 
 class Node:
@@ -8,34 +8,39 @@ class Node:
 
     Attributes:
         state (np.ndarray): The game state associated with this node.
+        player (BoardPiece): The player who is to move at this node.
         parent (Node | None): The parent node in the search tree.
         children (dict): A dictionary mapping actions to child nodes.
         visits (int): Number of times this node has been visited.
         wins (dict): Simulation result scores for this node winning for both player (Player == key).
         untried_actions (list): List of actions not yet tried from this state.
+        is_terminal (bool): Whether this node is a terminal state.
+        result (dict): The result of the game, if node is terminal.
     """
 
-    def __init__(self, state: np.ndarray, parent=None):
+    def __init__(self, state: np.ndarray, player: BoardPiece, parent=None):
         if not isinstance(state, np.ndarray):
             raise TypeError(f"Expected state to be a np.ndarray, got {type(state)}")
 
-        self.state = state
+        self.state = state.copy()
+        self.player = player
         self.parent = parent
         self.children = {}
         self.visits = 0
         self.wins = {PLAYER1: 0, PLAYER2: 0}
         self.untried_actions = self.get_valid_moves()
-
-    def refresh_children(self) -> None:
-        """
-        Refresh the node's valid children and untried actions to reflect current state.
-        Removes children whose moves are no longer valid.
-        """
-        valid_moves = self.get_valid_moves()
-        for action in list(self.children.keys()):
-            if action not in valid_moves:
-                del self.children[action]
-        self.untried_actions = list(set(valid_moves) - set(self.children.keys()))
+        self.is_terminal, self.result = self.check_terminal_state()
+        
+    def check_terminal_state(self):
+        if connected_four(self.state, PLAYER1):
+            return True, {PLAYER1: 1, PLAYER2: -1}
+        elif connected_four(self.state, PLAYER2):
+            return True, {PLAYER1: -1, PLAYER2: 1}
+        elif np.all(self.state != NO_PLAYER):
+            return True, {PLAYER1: 0, PLAYER2: 0}
+        elif not self.untried_actions:
+            return True, {PLAYER1: 0, PLAYER2: 0}  
+        return False, None
 
 
     def get_valid_moves(self) -> list[int]:
@@ -45,23 +50,27 @@ class Node:
         Returns:
             list[int]: A list of column indices that are valid moves.
         """
-        return list(np.where(self.state[0, :] == NO_PLAYER)[0])
-
-    def expand(self, action: PlayerAction, next_state: np.ndarray) -> 'Node':
+        return [PlayerAction(col) for col in range(BOARD_COLS) 
+                if check_move_status(self.state, PlayerAction(col)) == MoveStatus.IS_VALID]
+        
+    def expand(self, action: PlayerAction, next_state: np.ndarray, next_player: BoardPiece) -> 'Node':
         """
         Expand the current node by adding a child node for the given action.
 
         Args:
             action (PlayerAction): The action that leads to the child state.
             next_state (np.ndarray): The resulting state from applying the action.
+            next_player (BoardPiece): The player who will move next.
 
         Returns:
             child_node (Node): The newly created child node.
         """
-        child_node = Node(next_state, parent=self)
+        child_node = Node(next_state, next_player, parent=self)
         self.children[action] = child_node
-        self.untried_actions.remove(action)
+        if action in self.untried_actions:
+            self.untried_actions.remove(action)
         return child_node
+
 
     def is_fully_expanded(self) -> bool:
         """
@@ -72,26 +81,24 @@ class Node:
         """
         return len(self.untried_actions) == 0
 
-    def uct(self, node: 'Node', parent_visits: int, player: BoardPiece) -> float:
+    def uct(self, child: 'Node', exploration_param: float = np.sqrt(2)) -> float:
+      
         """
         Calculate the Upper Confidence Bound (UCT) score for a child node.
 
         Args:
             node (Node): The child node to evaluate.
-            parent_visits (int): The number of visits to the parent node.
-            player (BoardPiece): The current player
-            
+            exploration_param (float): The exploration parameter for UCT.
         Returns:
             float: The UCT score for the node.
         """
-        if node.visits == 0:
-            return float("inf")
-        win_ratio = node.wins[player] / node.visits
-        explore = np.sqrt(np.log(parent_visits) / node.visits)
-        uct = win_ratio + np.sqrt(2) * explore
-        return uct
+        if child.visits == 0:
+            return float('inf')
+        exploitation = child.wins[self.player] / child.visits
+        exploration = exploration_param * np.sqrt(np.log(self.visits + 1) / child.visits)
+        return exploitation + exploration
     
-    def best_child(self, player: 'BoardPiece') -> 'Node':
+    def best_child(self) -> 'Node':
         """
         Select the child node with the highest UCT score.
         
@@ -101,16 +108,16 @@ class Node:
         Returns:
             best_child (Node): The child node with the highest UCT value.
         """
-        parent_visits = self.visits
-        uct_scores = []
+        best_uct_value = float('-inf')  # Initialize with the smallest possible value
+        best_node = None 
 
         for action, child in self.children.items():
-            score = self.uct(child, parent_visits, player)
-            uct_scores.append((score, child))
-        best_child_node = max(
-            uct_scores, key=lambda uct_children_tuple: uct_children_tuple[0]
-        )[1]
+            score = self.uct(child)
 
-        return best_child_node
+            if score > best_uct_value:
+                best_uct_value = score
+                best_node = child
+
+        return best_node
 
    
