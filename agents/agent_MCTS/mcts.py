@@ -12,11 +12,11 @@ from game_utils import (
 from .Node import Node
 
 
-iterationnumber = 10
+iterationnumber = 10000
 
 
 def mcts_move(
-    board: np.ndarray, root_player: BoardPiece, saved_state: SavedState | None,
+    board: np.ndarray, root_player: BoardPiece, saved_state: SavedState | None, iterationnumber: int = iterationnumber
 ) -> tuple[PlayerAction, SavedState | None]:
     """
     Perform next move of agent using the Monte Carlo Tree Search (MCTS) algorithm.
