@@ -1,21 +1,18 @@
 import numpy as np
 from game_utils import (
     BoardPiece,
-    BOARD_COLS,
     PlayerAction,
     SavedState,
     apply_player_action,
     MoveStatus,
     check_move_status,
-    check_end_state, 
-    GameState,
     get_opponent,
     PLAYER1, PLAYER2
 )
 from .Node import Node
 
 
-iterationnumber = 20
+iterationnumber = 10
 
 
 def mcts_move(
@@ -69,10 +66,7 @@ def mcts_move(
     # before trying to get the most visited child, as iterationnumber could be too low
     if not current_node.children:
         print("No children found for current_node. Returning a random valid action.")
-        valid_moves = [
-            col for col in range(BOARD_COLS)
-            if check_move_status(current_node.state, PlayerAction(col)) == MoveStatus.IS_VALID
-        ]
+        valid_moves = current_node.get_valid_moves()
         action = np.random.choice(valid_moves)
         return action, current_node
     most_visited = max(current_node.children.items(), key=lambda item: item[1].visits)
@@ -94,11 +88,11 @@ def simulate(node: Node, player: BoardPiece) -> dict[BoardPiece, int]:
     """
     node_state = node.state.copy()
 
-    while check_end_state(node_state, PLAYER1) == GameState.STILL_PLAYING:
-        valid_moves = [
-            col for col in range(BOARD_COLS)
+    while not node.check_terminal_state()[0]:
+        valid_moves = [ col for col in range(node_state.shape[1])
             if check_move_status(node_state, PlayerAction(col)) == MoveStatus.IS_VALID
         ]
+        node.get_valid_moves()
         if not valid_moves:
             return {PLAYER1: 0, PLAYER2: 0} 
         
@@ -106,13 +100,7 @@ def simulate(node: Node, player: BoardPiece) -> dict[BoardPiece, int]:
         apply_player_action(node_state, PlayerAction(action), player)
         player = get_opponent(player)
 
-        result = check_end_state(node_state, PLAYER1)
-        if result == GameState.IS_WIN:
-            return {PLAYER1: 1, PLAYER2: -1}
-        elif result == GameState.IS_LOST:
-            return {PLAYER1: -1, PLAYER2: 1}
-        elif result == GameState.IS_DRAW:
-            return {PLAYER1: 0, PLAYER2: 0}
+    return node.check_terminal_state()[1]
 
 def backpropagate(node: Node, result: dict[BoardPiece, int]) -> None:
     """
@@ -143,7 +131,6 @@ def expand_to_next_children(player: BoardPiece, node: Node) -> tuple[PlayerActio
     Returns:
         tuple[PlayerAction, np.ndarray]: The selected action and the resulting game state.
     """
-    #node.refresh_children()
     action = np.random.choice(node.untried_actions)
     next_state = node.state.copy()
     apply_player_action(next_state, PlayerAction(action), player)

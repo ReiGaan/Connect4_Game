@@ -32,15 +32,34 @@ class Node:
         self.is_terminal, self.result = self.check_terminal_state()
         
     def check_terminal_state(self):
-        if connected_four(self.state, PLAYER1):
+        """
+        Check whether the current node represents a terminal state in the game.
+
+        Returns:
+            tuple:
+                - bool: True if the current state is terminal, False otherwise.
+                - dict or None: A dictionary with the result of the game for each player 
+                if the state is terminal, or None if not terminal.
+        """
+        if self._is_win(PLAYER1):
             return True, {PLAYER1: 1, PLAYER2: -1}
-        elif connected_four(self.state, PLAYER2):
+        if self._is_win(PLAYER2):
             return True, {PLAYER1: -1, PLAYER2: 1}
-        elif np.all(self.state != NO_PLAYER):
+        if self._is_draw():
             return True, {PLAYER1: 0, PLAYER2: 0}
-        elif not self.untried_actions:
-            return True, {PLAYER1: 0, PLAYER2: 0}  
         return False, None
+
+    def _is_win(self, player: BoardPiece) -> bool:
+        """Check if the given player has won.
+        
+        Args:
+            player (BoardPiece): The player to check for a win.
+        """
+        return connected_four(self.state, player)
+
+    def _is_draw(self) -> bool:
+        """Check if the game is a draw."""
+        return np.all(self.state != NO_PLAYER)
 
 
     def get_valid_moves(self) -> list[int]:
@@ -108,7 +127,7 @@ class Node:
         Returns:
             best_child (Node): The child node with the highest UCT value.
         """
-        best_uct_value = float('-inf')  # Initialize with the smallest possible value
+        best_uct_value = float('-inf') 
         best_node = None 
 
         for action, child in self.children.items():
