@@ -59,15 +59,15 @@ class Node:
 
     def _is_draw(self) -> bool:
         """Check if the game is a draw."""
-        return np.all(self.state != NO_PLAYER)
+        return bool(np.all(self.state != NO_PLAYER))
 
 
-    def get_valid_moves(self) -> list[int]:
+    def get_valid_moves(self) -> list[PlayerAction]:
         """
         Compute the list of valid moves from the current Node.
 
         Returns:
-            list[int]: A list of column indices that are valid moves.
+            list[PlayerAction]: A list of column indices that are valid moves.
         """
         return [PlayerAction(col) for col in range(BOARD_COLS) 
                 if check_move_status(self.state, PlayerAction(col)) == MoveStatus.IS_VALID]
@@ -89,7 +89,6 @@ class Node:
         if action in self.untried_actions:
             self.untried_actions.remove(action)
         return child_node
-
 
     def is_fully_expanded(self) -> bool:
         """
@@ -136,7 +135,8 @@ class Node:
             if score > best_uct_value:
                 best_uct_value = score
                 best_node = child
-
+        if best_node is None:
+            raise ValueError("No best child found: this node has no children.")
         return best_node
 
    

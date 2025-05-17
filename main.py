@@ -25,7 +25,7 @@ def  human_vs_agent(
         for init, player in zip((init_1, init_2)[::play_first], players):
             init(initialize_game_state(), player)
 
-        saved_state = {PLAYER1: None, PLAYER2: None}
+        saved_state: dict = {PLAYER1: None, PLAYER2: None}
         board = initialize_game_state()
         gen_moves = (generate_move_1, generate_move_2)[::play_first]
         player_names = (player_1, player_2)[::play_first]
