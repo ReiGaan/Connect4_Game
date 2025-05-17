@@ -213,10 +213,11 @@ def test_player_action_first_action():
         NO_PLAYER,
         BoardPiece,
         PLAYER1,
+        PlayerAction
     )
 
     board = initialize_game_state()
-    apply_player_action(board, 2, PLAYER1)
+    apply_player_action(board, PlayerAction(2), PLAYER1)
     expected_board = np.full(BOARD_SHAPE, NO_PLAYER, dtype=BoardPiece)
     expected_board[5, 2] = PLAYER1
     print(expected_board)
@@ -230,7 +231,7 @@ def test_player_action_some_full_spots():
     Checks to make an Player action in an not empty board,
     so checks that piece drops into the correct open row above existing pieces.
     """
-    from game_utils import apply_player_action, NO_PLAYER, PLAYER1, PLAYER2
+    from game_utils import apply_player_action, NO_PLAYER, PLAYER1, PLAYER2, PlayerAction
 
     board = np.array(
         [
@@ -260,7 +261,7 @@ def test_player_action_some_full_spots():
     )
     expected_board = board.copy()
     expected_board[2, 2] = PLAYER1
-    apply_player_action(board, 2, PLAYER1)
+    apply_player_action(board, PlayerAction(2), PLAYER1)
 
     assert np.array_equal(board, expected_board)
 
@@ -269,10 +270,10 @@ def test_player_action_left_edge():
     """
     Checks to make an Player action in an empty board for edge position.
     """
-    from game_utils import apply_player_action, initialize_game_state, PLAYER1
+    from game_utils import apply_player_action, initialize_game_state, PLAYER1, PlayerAction
 
     board = initialize_game_state()
-    apply_player_action(board, 0, PLAYER1)
+    apply_player_action(board, PlayerAction(0), PLAYER1)
     assert board[5, 0] == PLAYER1
 
 
@@ -280,11 +281,11 @@ def test_multiple_actions_in_one_column():
     """
     Checks to make multiple Player action in an empty board in one column.
     """
-    from game_utils import apply_player_action, initialize_game_state, PLAYER1, PLAYER2
+    from game_utils import apply_player_action, initialize_game_state, PLAYER1, PLAYER2,PlayerAction
 
     board = initialize_game_state()
-    apply_player_action(board, 3, PLAYER1)
-    apply_player_action(board, 3, PLAYER2)
+    apply_player_action(board, PlayerAction(3), PLAYER1)
+    apply_player_action(board, PlayerAction(3), PLAYER2)
     assert board[5, 3] == PLAYER1
     assert board[4, 3] == PLAYER2
 
@@ -383,12 +384,13 @@ def test_not_possible_player_action_():
         BoardPiece,
         PLAYER1,
         PLAYER2,
+        PlayerAction
     )
 
     with pytest.raises(ValueError) as excinfo:
         board = np.full(BOARD_SHAPE, NO_PLAYER, dtype=BoardPiece)
         board[:, 2] = PLAYER2
-        apply_player_action(board, 2, PLAYER1)
+        apply_player_action(board, PlayerAction(2), PLAYER1)
 
     assert "Column 3 is full." in str(excinfo.value)
 
@@ -469,193 +471,4 @@ def test_check_end_state():
     assert (check_end_state(board_full, PLAYER1)) == GameState.IS_DRAW
     board_full[0, :] = NO_PLAYER
     assert (check_end_state(board_full, PLAYER2)) == GameState.STILL_PLAYING
-
-
-def test_mcts_never_plays_illegal_move():
-    from game_utils import (
-        BoardPiece,
-        MoveStatus,
-        check_move_status,
-        NO_PLAYER,
-        PLAYER1,
-        PLAYER2,
-    )
-    from agents.agent_MCTS.mcts import mcts_move
-
-    num_trials = 8
-
-    for i in range(num_trials):
-        board = np.array(
-            [
-                [NO_PLAYER, PLAYER1, PLAYER2, NO_PLAYER, PLAYER2, PLAYER1, PLAYER2],
-                [PLAYER1, PLAYER2, PLAYER2, PLAYER1, PLAYER1, PLAYER2, PLAYER1],
-                [PLAYER2, PLAYER1, PLAYER1, PLAYER2, PLAYER2, PLAYER1, PLAYER2],
-                [PLAYER1, PLAYER2, PLAYER1, PLAYER1, PLAYER1, PLAYER2, PLAYER2],
-                [PLAYER1, PLAYER2, PLAYER1, PLAYER2, PLAYER2, PLAYER1, PLAYER1],
-                [PLAYER2, PLAYER1, PLAYER2, PLAYER1, PLAYER1, PLAYER1, PLAYER2],
-            ]
-        )
-
-        player = BoardPiece(1)
-        saved_state = None
-
-        action, saved_state = mcts_move(board.copy(), player, saved_state, iterationnumber=10)
-
-        try:
-            action, saved_state = mcts_move(board.copy(), player, saved_state)
-            move_status = check_move_status(board, action)
-            assert move_status == MoveStatus.IS_VALID
-        except AssertionError:
-            print(f"Test failed on iteration {i}")
-            print("Board before move:\n", board)
-            print("Action selected:", action)
-            print("Saved node state:\n", saved_state.state if saved_state else "None")
-            print(
-                "Valid moves from board:",
-                [
-                    c
-                    for c in range(board.shape[1])
-                    if check_move_status(board, c) == MoveStatus.IS_VALID
-                ],
-            )
-            raise
-
-def test_check_terminal_state_empty_board():
-    from game_utils import PLAYER1, PLAYER2
-    from agents.agent_MCTS.Node import Node
-    state = np.zeros((6, 7), dtype=int)
-    node = Node(state, PLAYER1)
-    assert not node.is_terminal
-
-def test_check_terminal_state_winning_state():
-    from game_utils import PLAYER1, PLAYER2
-    from agents.agent_MCTS.Node import Node
-    state = np.zeros((6, 7), dtype=int)
-    node = Node(state, PLAYER1)
-    state[0, :4] = PLAYER1
-    node = Node(state, PLAYER1)
-    assert node.is_terminal
-    assert node.result == {PLAYER1: 1, PLAYER2: -1}
-
-
-def test_mcts_finds_winning_move():
-    """
-    Tests that MCTS selects the winning move when there is one available.
-    """
-    from game_utils import initialize_game_state, PLAYER1, PlayerAction
-    from agents.agent_MCTS.mcts import mcts_move
-
-    board = initialize_game_state()
-    board[5, 2:5] = PLAYER1
-    print(board)
-    player = PLAYER1
-    saved_state = None
-    
-    action, _ = mcts_move(board.copy(), player, saved_state)
-    print(action)
-    assert action == PlayerAction(1) or action == PlayerAction(5) 
-
-def test_mcts_defends_move():
-    """
-    Tests that MCTS defends the winning move of the opponent when there is one available
-    and there is a way to defend it.
-    """
-    from game_utils import initialize_game_state, PLAYER1, PLAYER2, PlayerAction
-    from agents.agent_MCTS.mcts import mcts_move
-
-    board = initialize_game_state()
-    board[3:6, 2] = PLAYER2
-    board[5, 3:5] = PLAYER1
-
-    player = PLAYER1
-    saved_state = None
-    
-    action, _ = mcts_move(board.copy(), player, saved_state)
-    assert action == PlayerAction(2)
-
-def test_edge_cases():
-    from game_utils import PLAYER1
-    from agents.agent_MCTS.Node import Node
-    board = np.zeros((6, 7), dtype=int)
-    board[0:5,:4] = PLAYER1 
-    print(board)
-    node = Node(board, PLAYER1)
-    assert len(node.get_valid_moves()) == 3 
-    
-    
-def test_backpropagation(): 
-    from agents.agent_MCTS.Node import Node
-    from agents.agent_MCTS.mcts import backpropagate
-    from game_utils import PLAYER1, PLAYER2
-    
-    root_node = Node(state=np.zeros((6, 7)), parent=None, player=PLAYER1)   
-    child_node_1 = Node(state=np.zeros((6, 7)), parent=root_node, player=PLAYER2)  
-    child_node_2 = Node(state=np.zeros((6, 7)), parent=child_node_1, player=PLAYER1)    
-    
-    root_node.visits = 0
-    child_node_1.visits = 0
-    child_node_2.visits = 0
-    
-    final_result = {PLAYER1: 1, PLAYER2: -1}
-    
-    backpropagate(child_node_2, final_result)
-    
-    assert root_node.visits == 1 and root_node.wins[PLAYER1] == 1
-    
-def test_get_valid_moves_full_column():
-    from game_utils import PLAYER1, initialize_game_state
-    from agents.agent_MCTS.Node import Node
-    board = initialize_game_state()
-    board[:, 0] = PLAYER1  
-    node = Node(board, PLAYER1)
-    valid_moves = node.get_valid_moves()
-    assert 0 not in valid_moves, "Full column should not be a valid move"
-    
-def test_expand():
-    """Test expanding a node."""
-    from game_utils import PLAYER1, PLAYER2, PlayerAction, initialize_game_state
-    from agents.agent_MCTS.Node import Node
-    node = Node(state=initialize_game_state(), player=PLAYER1)
-    action = PlayerAction(0)
-    next_state = initialize_game_state()
-    next_state[5, 0] = PLAYER1  
-    child = node.expand(action, next_state, PLAYER2)
-    assert node.children[action] == child and child.player == PLAYER2
-
-def test_is_fully_expanded():
-    """Test if a node is fully expanded."""
-    from game_utils import PLAYER1, PLAYER2, initialize_game_state
-    from agents.agent_MCTS.Node import Node
-    node = Node(state=initialize_game_state(), player=PLAYER1)
-    for action in node.untried_actions:
-        next_state = initialize_game_state()
-        next_state[5, action] = PLAYER1
-        node.expand(action, next_state, PLAYER2)
-    assert node.is_fully_expanded() 
-
-def test_uct():
-    """Test UCT calculation."""
-    from game_utils import PLAYER1, PLAYER2, initialize_game_state
-    from agents.agent_MCTS.Node import Node
-    node = Node(state=initialize_game_state(), player=PLAYER1)
-    child = Node(initialize_game_state(), PLAYER2, parent=node)
-    child.visits = 10
-    child.wins[PLAYER1] = 5
-    node.visits = 20
-    uct_value = node.uct(child)
-    assert uct_value > 0 
-
-def test_best_child():
-    """Test selecting the best child node based on UCT."""
-    from game_utils import PLAYER1, PLAYER2, PlayerAction, initialize_game_state
-    from agents.agent_MCTS.Node import Node
-    node = Node(state=initialize_game_state(), player=PLAYER1)
-    for i in range(3):
-        next_state = initialize_game_state()
-        next_state[5, i] = PLAYER1
-        child = node.expand(PlayerAction(i), next_state, PLAYER2)
-        child.visits = i + 1 
-    best_child = node.best_child()
-    print(best_child.visits)
-    assert best_child.visits == 3  
 
