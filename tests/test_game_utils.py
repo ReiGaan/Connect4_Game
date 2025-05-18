@@ -472,3 +472,63 @@ def test_check_end_state():
     board_full[0, :] = NO_PLAYER
     assert (check_end_state(board_full, PLAYER2)) == GameState.STILL_PLAYING
 
+###copilot ideas
+def test_backpropagation_credits_correct_player():
+    from agents.agent_MCTS.node import Node
+    from agents.agent_MCTS.mcts import backpropagate
+    from game_utils import PLAYER1, PLAYER2
+
+    root = Node(state=np.zeros((6, 7)), player=PLAYER1)
+    child = Node(state=np.zeros((6, 7)), player=PLAYER2, parent=root)
+    result = {PLAYER1: 1, PLAYER2: -1}
+    backpropagate(child, result)
+    assert root.wins[PLAYER1] == 1
+    assert root.visits == 1
+
+def test_connected_four_detects_diagonal_win():
+    from game_utils import connected_four, PLAYER1, NO_PLAYER
+    board = np.array([
+        [NO_PLAYER, NO_PLAYER, NO_PLAYER, PLAYER1],
+        [NO_PLAYER, NO_PLAYER, PLAYER1, NO_PLAYER],
+        [NO_PLAYER, PLAYER1, NO_PLAYER, NO_PLAYER],
+        [PLAYER1, NO_PLAYER, NO_PLAYER, NO_PLAYER],
+        [NO_PLAYER, NO_PLAYER, NO_PLAYER, NO_PLAYER],
+        [NO_PLAYER, NO_PLAYER, NO_PLAYER, NO_PLAYER],
+    ])
+    assert connected_four(board, PLAYER1)
+    
+def test_simulation_switches_players_correctly():
+    from agents.agent_MCTS.node import Node
+    from agents.agent_MCTS.mcts import simulate
+    from game_utils import PLAYER1, PLAYER2, PlayerAction, apply_player_action, MoveStatus, check_move_status
+
+    # Set up a board where PLAYER1 can win in one move
+    board = np.zeros((6, 7), dtype=np.int8)
+    board[5, 2:5] = PLAYER1
+    node = Node(state=board, player=PLAYER1)
+    result = simulate(node, PLAYER1)
+    # PLAYER1 should win in simulation
+    assert result[PLAYER1] == 1
+    
+def test_best_child_selects_winning_move():
+    from agents.agent_MCTS.node import Node
+    from game_utils import PLAYER1, PLAYER2, PlayerAction
+
+    root = Node(state=np.zeros((6, 7)), player=PLAYER1)
+    # Simulate two children: one with a win, one with a loss
+    win_child = Node(state=np.zeros((6, 7)), player=PLAYER2, parent=root)
+    lose_child = Node(state=np.zeros((6, 7)), player=PLAYER2, parent=root)
+    root.children = {PlayerAction(0): win_child, PlayerAction(1): lose_child}
+    win_child.visits = 10
+    win_child.wins[PLAYER1] = 10
+    lose_child.visits = 10
+    lose_child.wins[PLAYER1] = 0
+
+    best = root.best_child()
+    assert best is win_child
+    
+def test_action_type_consistency():
+    from game_utils import PlayerAction
+    a = PlayerAction(3)
+    b = np.int8(3)
+    assert a == b

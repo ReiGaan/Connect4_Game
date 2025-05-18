@@ -4,7 +4,7 @@ import pytest
 
 def test_get_valid_moves_full_column():
     from game_utils import PLAYER1, initialize_game_state
-    from agents.agent_MCTS.Node import Node
+    from agents.agent_MCTS.node import Node
     board = initialize_game_state()
     board[:, 0] = PLAYER1  
     node = Node(board, PLAYER1)
@@ -20,7 +20,7 @@ def test_get_valid_moves_edge_cases():
 
     """
     from game_utils import PLAYER1
-    from agents.agent_MCTS.Node import Node
+    from agents.agent_MCTS.node import Node
     board = np.zeros((6, 7), dtype=int)
     board[0:5,:4] = PLAYER1 
     node = Node(board, PLAYER1)
@@ -30,14 +30,14 @@ def test_get_valid_moves_edge_cases():
 
 def test_check_terminal_state_empty_board():
     from game_utils import PLAYER1, PLAYER2
-    from agents.agent_MCTS.Node import Node
+    from agents.agent_MCTS.node import Node
     state = np.zeros((6, 7), dtype=int)
     node = Node(state, PLAYER1)
     assert not node.is_terminal
 
 def test_check_terminal_state_winning_state():
     from game_utils import PLAYER1, PLAYER2
-    from agents.agent_MCTS.Node import Node
+    from agents.agent_MCTS.node import Node
     state = np.zeros((6, 7), dtype=int)
     node = Node(state, PLAYER1)
     state[0, :4] = PLAYER1
@@ -49,7 +49,7 @@ def test_check_terminal_state_winning_state():
 def test_expand():
     """Test expanding a node."""
     from game_utils import PLAYER1, PLAYER2, PlayerAction, initialize_game_state
-    from agents.agent_MCTS.Node import Node
+    from agents.agent_MCTS.node import Node
     node = Node(state=initialize_game_state(), player=PLAYER1)
     action = PlayerAction(0)
     next_state = initialize_game_state()
@@ -63,7 +63,7 @@ def test_is_fully_expanded():
     """
     
     from game_utils import PLAYER1, PLAYER2, initialize_game_state, PlayerAction
-    from agents.agent_MCTS.Node import Node
+    from agents.agent_MCTS.node import Node
     state = initialize_game_state()
     node = Node(state=state, player=PLAYER1)
 
@@ -82,7 +82,7 @@ def test_is_fully_expanded():
 def test_uct():
     """Test UCT calculation."""
     from game_utils import PLAYER1, PLAYER2, initialize_game_state
-    from agents.agent_MCTS.Node import Node
+    from agents.agent_MCTS.node import Node
     node = Node(state=initialize_game_state(), player=PLAYER1)
     child = Node(initialize_game_state(), PLAYER2, parent=node)
     child.visits = 10
@@ -99,7 +99,7 @@ def test_best_child_selects_highest_uct():
     child 1 UCT = 8/10 + sqrt(2 * log(20) / 10) = 1.247
     child 2 UCT = 2/10 + sqrt(2 * log(20) / 10) = 0.747
     """
-    from agents.agent_MCTS.Node import Node
+    from agents.agent_MCTS.node import Node
     from game_utils import initialize_game_state, PlayerAction, PLAYER1, PLAYER2
 
     root_node = Node(state=initialize_game_state(), player=PLAYER1)
@@ -125,7 +125,7 @@ def test_best_child_with_unvisited_child():
     Test that `best_child` returns unvisited child node when such a child exists as this ensures 
     that prioritizing exploration of unvisited nodes in the tree search algorithm.
     """
-    from agents.agent_MCTS.Node import Node
+    from agents.agent_MCTS.node import Node
     from game_utils import initialize_game_state, PlayerAction, PLAYER1, PLAYER2
 
     root_node = Node(state=initialize_game_state(), player=PLAYER1)

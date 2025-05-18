@@ -9,10 +9,10 @@ from game_utils import (
     get_opponent,
     PLAYER1, PLAYER2
 )
-from .Node import Node
+from .node import Node
 
 
-iterationnumber = 10000
+iterationnumber = 1000
 
 
 def mcts_move(
@@ -44,16 +44,15 @@ def mcts_move(
         # === SELECTION ===
         while node.is_fully_expanded() and not node.is_terminal:
             node = node.best_child()
-            player = get_opponent(player)
         # === EXPANSION ===
         if not node.is_terminal and not node.is_fully_expanded():
             action, next_state = expand_to_next_children(player, node)
             next_player = get_opponent(player)
             child_node = node.expand(action, next_state, next_player) 
             node = child_node
-            player = next_player
-        else:
-            break
+            #player = next_player
+        #else:
+        #    break
         
         # === SIMULATION ===
         result = node.result if node.is_terminal else simulate(node, player)
@@ -88,7 +87,7 @@ def simulate(node: Node, player: BoardPiece) -> dict[BoardPiece, int]:
     """
     node_state = node.state.copy()
 
-    while not node.check_terminal_state()[0]:
+    while True:
         valid_moves = [ col for col in range(node_state.shape[1])
             if check_move_status(node_state, PlayerAction(col)) == MoveStatus.IS_VALID
         ]
@@ -98,6 +97,11 @@ def simulate(node: Node, player: BoardPiece) -> dict[BoardPiece, int]:
         
         action = np.random.choice(valid_moves)
         apply_player_action(node_state, PlayerAction(action), player)
+        
+        terminal, result = Node(node_state, player).check_terminal_state()
+        if terminal:
+            return result
+        
         player = get_opponent(player)
 
     return node.check_terminal_state()[1]
@@ -131,7 +135,7 @@ def expand_to_next_children(player: BoardPiece, node: Node) -> tuple[PlayerActio
     Returns:
         tuple[PlayerAction, np.ndarray]: The selected action and the resulting game state.
     """
-    action = np.random.choice(node.untried_actions)
+    action = np.random.choice(list(node.untried_actions))
     next_state = node.state.copy()
     apply_player_action(next_state, PlayerAction(action), player)
     return PlayerAction(action), next_state

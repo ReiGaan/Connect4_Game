@@ -4,7 +4,7 @@ import pytest
 ##TODO: Change board initialization to have real board states
 
 def test_backpropagation(): 
-    from agents.agent_MCTS.Node import Node
+    from agents.agent_MCTS.node import Node
     from agents.agent_MCTS.mcts import backpropagate
     from game_utils import PLAYER1, PLAYER2
     
@@ -84,7 +84,7 @@ def test_mcts_finds_winning_move_horizontal():
     player = PLAYER1
     saved_state = None
     
-    action, _ = mcts_move(board.copy(), player, saved_state)
+    action, _ = mcts_move(board.copy(), player, saved_state, iterationnumber=5000)
     print(action)
     assert action == PlayerAction(1) or action == PlayerAction(5) 
 
@@ -175,11 +175,12 @@ def test_mcts_defends_move_vertical():
     board = initialize_game_state()
     board[3:6, 2] = PLAYER2
     board[5, 3:5] = PLAYER1
-
+    print(board)
     player = PLAYER1
     saved_state = None
-    
     action, _ = mcts_move(board.copy(), player, saved_state)
+    print(action)
+
     assert action == PlayerAction(2)
 
 def test_mcts_defends_diagonal():
@@ -190,10 +191,12 @@ def test_mcts_defends_diagonal():
     board[5, 0] = PLAYER2
     board[4, 1] = PLAYER2
     board[3, 2] = PLAYER2
+    print(board)
     player = PLAYER1
     saved_state = None
 
     action, _ = mcts_move(board.copy(), player, saved_state)
+    print(action)
     assert action == PlayerAction(3)
 
 def test_mcts_defends_horizontal():

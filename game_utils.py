@@ -132,16 +132,11 @@ def connected_four(board: np.ndarray, player: BoardPiece) -> bool:
     Returns True if there are four adjacent pieces equal to `player` arranged
     in either a horizontal, vertical, or diagonal line. Returns False otherwise.
     """
-    num_player = np.count_nonzero(board == player)   
-    
-    if num_player >= 4: 
-        if test_connect_horizontal(board, player) or test_connect_vertical(board, player) or test_connect_diagonal(board, player): 
-            return True
-        else: 
-            return False
+    if test_connect_horizontal(board, player) or test_connect_vertical(board, player) or test_connect_diagonal(board, player): 
+        return True
     else: 
         return False
-    
+
 def test_connect_horizontal(board: np.ndarray, player: BoardPiece) -> bool: 
     """
     Returns True if there are four adjacent pieces equal to `player` arranged
