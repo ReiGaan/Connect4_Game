@@ -142,10 +142,19 @@ def test_connect_horizontal(board: np.ndarray, player: BoardPiece) -> bool:
     Returns True if there are four adjacent pieces equal to `player` arranged
     in horizontal. Returns False otherwise.
     """
+    # for row in board:
+    #     for col in range(len(row) - 3): # Only start where 4 in a row is possible
+    #         if np.all(row [col:col+4] == player):
+    #             return True
+    # return False
+    
+    target = np.array([player] * 4)
     for row in board:
-        for col in range(len(row) - 3): # Only start where 4 in a row is possible
-            if np.all(row [col:col+4] == player):
-                return True
+        # Create a boolean mask where the row equals the player
+        mask = (row == player).astype(int)
+        # Convolve with a window of size 4
+        if np.any(np.convolve(mask, np.ones(4, dtype=int), mode='valid') == 4):
+            return True
     return False
 
 def test_connect_vertical(board: np.ndarray, player: BoardPiece) -> bool: 
@@ -153,10 +162,15 @@ def test_connect_vertical(board: np.ndarray, player: BoardPiece) -> bool:
     Returns True if there are four adjacent pieces equal to `player` arranged in a 
     vertical line. Returns False otherwise.
     """
+    # for col in range(board.shape[1]):
+    #     for row in range(board.shape[0] - 3): 
+    #         if np.all(board[row:row+4, col] == player):
+    #             return True
+    # return False
+    mask = (board == player).astype(int)
     for col in range(board.shape[1]):
-        for row in range(board.shape[0] - 3): 
-            if np.all(board[row:row+4, col] == player):
-                return True
+        if np.any(np.convolve(mask[:, col], np.ones(4, dtype=int), mode='valid') == 4):
+            return True
     return False
 
 def test_connect_diagonal(board: np.ndarray, player: BoardPiece) -> bool: 
