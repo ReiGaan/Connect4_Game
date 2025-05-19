@@ -5,8 +5,6 @@ from game_utils import initialize_game_state, pretty_print_board, apply_player_a
 from agents.agent_human_user import user_move
 from agents.agent_random import generate_move as random_move
 from agents.agent_MCTS.mcts import mcts_move as generate_move_msct
-import numpy as np
-import random
 
 def  human_vs_agent(
     generate_move_1: GenMove,
@@ -22,14 +20,22 @@ def  human_vs_agent(
     players = (PLAYER1, PLAYER2)
     results = []
     for play_first in (1, -1):
-        for init, player in zip((init_1, init_2)[::play_first], players):
+        if play_first == 1:
+            inits = (init_1, init_2)
+            gen_moves = (generate_move_1, generate_move_2)
+            player_names = (player_1, player_2)
+            gen_args = (args_1, args_2)
+        else:
+            inits = (init_2, init_1)
+            gen_moves = (generate_move_2, generate_move_1)
+            player_names = (player_2, player_1)
+            gen_args = (args_2, args_1)
+
+        for init, player in zip(inits, players):
             init(initialize_game_state(), player)
 
         saved_state: dict = {PLAYER1: None, PLAYER2: None}
         board = initialize_game_state()
-        gen_moves = (generate_move_1, generate_move_2)[::play_first]
-        player_names = (player_1, player_2)[::play_first]
-        gen_args = (args_1, args_2)[::play_first]
 
         playing = True
         while playing:
@@ -42,7 +48,7 @@ def  human_vs_agent(
                     f'{player_name} you are playing with {PLAYER1_PRINT if player == PLAYER1 else PLAYER2_PRINT}'
                 )
                 action, saved_state[player] = gen_move(
-                    board.copy(),  # copy board to be safe, even though agents shouldn't modify it
+                    board.copy(),  
                     player, saved_state[player], *args
                 )
                 print(f'Move time: {time.time() - t0:.3f}s')
@@ -82,13 +88,11 @@ def run_mcts_vs_random(num_games: int = 100):
     for _ in range(num_games):
         print(f"Game {_ + 1}/{num_games}")
        
-          # Play one game between MCTS Agent and Random Agent
         results = human_vs_agent(generate_move_1=generate_move_msct, 
                                 generate_move_2=random_move, 
                                 player_1="MCTS Agent", 
                                 player_2="Random Agent")
         total.append(results)
-        # Update win counts based on results
         if results[0] == PLAYER1_PRINT:
             mcts_wins_started += 1
         elif results[0] == PLAYER2_PRINT:
@@ -99,7 +103,6 @@ def run_mcts_vs_random(num_games: int = 100):
         elif results[1] == PLAYER2_PRINT:
             mcts_wins_not_started += 1
 
-        # Count draws and errors
         draws += results.count('Draw')
         errors += results.count('Error')
     
@@ -110,15 +113,39 @@ def run_mcts_vs_random(num_games: int = 100):
     print(f"Random Agent wins and start the game: {random_wins_started}")
     print(f"Draws: {draws}")
     print(f"Errors: {errors}")    
-    print(total)
 
 if __name__ == "__main__":
-    seed = 30
-    np.random.seed(seed)  # Set seed for numpy
-    random.seed(seed)  
-    run_mcts_vs_random(15) # Run the MCTS vs Random simulation for 10 games
-    #human_vs_agent(user_move) #play against myself
-    #human_vs_agent(random_move, user_move, player_1="Random Agent", player_2="Anina") #play against random
-    #human_vs_agent(generate_move_msct, user_move, player_1="MCTS Agent", player_2="Anina") #play against mcts
-    #human_vs_agent(generate_move_1=generate_move_msct, generate_move_2=random_move, player_1="MCTS Agent", player_2="Random Agent") #mcts play against random
-    
+    print("Choose game mode:")
+    print("1: User vs Random Agent")
+    print("2: User vs MCTS Agent")
+    print("3: MCTS Agent vs Random Agent (baseline test)")
+    print("4: Human vs Human (2 players)")
+    mode = input("Enter number: ").strip()
+
+    if mode == "1":
+        human_vs_agent(
+            user_move,
+            random_move,
+            player_1="You",
+            player_2="Random Agent"
+        )
+    elif mode == "2":
+        human_vs_agent(
+            user_move,
+            generate_move_msct,
+            player_1="You",
+            player_2="MCTS Agent",
+            args_2=(100,)  # You can change the number of iterations here, as my agent first look for immediate win or block opponent's win dont use large iterationnumber 
+        )   
+    elif mode == "3":
+        num_games = int(input("How many games? "))
+        run_mcts_vs_random(num_games)
+    elif mode == "4":
+        human_vs_agent(
+            user_move,
+            user_move,
+            player_1="Player 1",
+            player_2="Player 2"
+        )
+    else:
+        print("Invalid selection.")

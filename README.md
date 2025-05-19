@@ -32,17 +32,9 @@ To run a series of games between the MCTS agent and the Random agent:
 python main.py
 ```
 
-You can adjust the number of games by changing the argument in `run_mcts_vs_random()` in `main.py`.
+You will be prompted to select the game mode (e.g., Human vs Random Agent, Human vs MCTS Agent, MCTS vs Random Agent, Human vs Human).
 
-### Playing as a Human
-
-Uncomment one of the following lines in `main.py` to play as a human:
-
-```python
-# human_vs_agent(user_move)  # Play against yourself
-# human_vs_agent(random_move, user_move, player_1="Random Agent", player_2="You")  # Play against random
-# human_vs_agent(generate_move_msct, user_move, player_1="MCTS Agent", player_2="You")  # Play against MCTS
-```
+--- 
 
 ### Running Tests
 
@@ -72,7 +64,7 @@ Game/
 
 ## Customization
 
-- You can modify the MCTS agent’s iteration count or logic in `agents/agent_MCTS/mcts.py`.
+- You can modify the MCTS agent’s iteration count or logic in `agents/agent_MCTS/mcts.py` or in the `main.py` as `args_2`
 - Add or modify tests in the `tests/` directory.
 
 ## Code of Honour & Acknowledgements

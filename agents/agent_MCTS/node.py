@@ -1,5 +1,26 @@
+"""
+This module defines the Node class for use in Monte Carlo Tree Search (MCTS)
+Classes:
+Node: Represents a node in the MCTS tree, encapsulating the game state, 
+player to move, parent and child nodes, visit and win statistics, and methods 
+for expansion, terminal state checking, and UCT-based child selection.
+Dependencies:
+    - numpy as np
+    - game_utils: connected_four, PlayerAction, check_move_status, MoveStatus, BOARD_COLS, BoardPiece, PLAYER1, PLAYER2, NO_PLAYER
+"""
+
 import numpy as np
-from game_utils import connected_four, PlayerAction, check_move_status, MoveStatus, BOARD_COLS, BoardPiece, PLAYER1, PLAYER2,NO_PLAYER
+from game_utils import (
+    connected_four,
+    PlayerAction,
+    check_move_status,
+    MoveStatus,
+    BOARD_COLS,
+    BoardPiece,
+    PLAYER1,
+    PLAYER2,
+    NO_PLAYER,
+)
 
 
 class Node:
@@ -19,6 +40,14 @@ class Node:
     """
 
     def __init__(self, state: np.ndarray, player: BoardPiece, parent=None):
+        """
+        Initialize a Node for MCTS.
+
+        Args:
+            state (np.ndarray): The game state.
+            player (BoardPiece): The player to move at this node.
+            parent (Node | None): The parent node.
+        """
         if not isinstance(state, np.ndarray):
             raise TypeError(f"Expected state to be a np.ndarray, got {type(state)}")
 
@@ -28,17 +57,17 @@ class Node:
         self.children = {}
         self.visits = 0
         self.wins = {PLAYER1: 0, PLAYER2: 0}
-        self.untried_actions = self.get_valid_moves()
+        self.untried_actions = set(self.get_valid_moves())
         self.is_terminal, self.result = self.check_terminal_state()
-        
-    def check_terminal_state(self):
+
+    def check_terminal_state(self) -> tuple[bool, dict | None]:
         """
         Check whether the current node represents a terminal state in the game.
 
         Returns:
             tuple:
                 - bool: True if the current state is terminal, False otherwise.
-                - dict or None: A dictionary with the result of the game for each player 
+                - dict or None: A dictionary with the result of the game for each player
                 if the state is terminal, or None if not terminal.
         """
         if self._is_win(PLAYER1):
@@ -51,7 +80,7 @@ class Node:
 
     def _is_win(self, player: BoardPiece) -> bool:
         """Check if the given player has won.
-        
+
         Args:
             player (BoardPiece): The player to check for a win.
         """
@@ -61,7 +90,6 @@ class Node:
         """Check if the game is a draw."""
         return bool(np.all(self.state != NO_PLAYER))
 
-
     def get_valid_moves(self) -> list[PlayerAction]:
         """
         Compute the list of valid moves from the current Node.
@@ -69,10 +97,15 @@ class Node:
         Returns:
             list[PlayerAction]: A list of column indices that are valid moves.
         """
-        return [PlayerAction(col) for col in range(BOARD_COLS) 
-                if check_move_status(self.state, PlayerAction(col)) == MoveStatus.IS_VALID]
-        
-    def expand(self, action: PlayerAction, next_state: np.ndarray, next_player: BoardPiece) -> 'Node':
+        return [
+            PlayerAction(col)
+            for col in range(BOARD_COLS)
+            if check_move_status(self.state, PlayerAction(col)) == MoveStatus.IS_VALID
+        ]
+
+    def expand(
+        self, action: PlayerAction, next_state: np.ndarray, next_player: BoardPiece
+    ) -> "Node":
         """
         Expand the current node by adding a child node for the given action.
 
@@ -86,8 +119,7 @@ class Node:
         """
         child_node = Node(next_state, next_player, parent=self)
         self.children[action] = child_node
-        if action in self.untried_actions:
-            self.untried_actions.remove(action)
+        self.untried_actions.discard(action)
         return child_node
 
     def is_fully_expanded(self) -> bool:
@@ -99,35 +131,33 @@ class Node:
         """
         return len(self.untried_actions) == 0
 
-    def uct(self, child: 'Node', exploration_param: float = np.sqrt(2)) -> float:
-      
+    def uct(self, child: "Node", exploration_param: float = np.sqrt(2)) -> float:
         """
         Calculate the Upper Confidence Bound (UCT) score for a child node.
 
         Args:
-            node (Node): The child node to evaluate.
+            child (Node): The child node to evaluate.
             exploration_param (float): The exploration parameter for UCT.
         Returns:
             float: The UCT score for the node.
         """
         if child.visits == 0:
-            return float('inf')
+            return float("inf")
         exploitation = child.wins[self.player] / child.visits
-        exploration = exploration_param * np.sqrt(np.log(self.visits + 1) / child.visits)
+        exploration = exploration_param * np.sqrt(
+            np.log(self.visits + 1) / child.visits
+        )
         return exploitation + exploration
-    
-    def best_child(self) -> 'Node':
+
+    def best_child(self) -> "Node":
         """
         Select the child node with the highest UCT score.
-        
-        Args:
-            player (BoardPiece): The current player.
 
         Returns:
             best_child (Node): The child node with the highest UCT value.
         """
-        best_uct_value = float('-inf') 
-        best_node = None 
+        best_uct_value = float("-inf")
+        best_node = None
 
         for action, child in self.children.items():
             score = self.uct(child)
@@ -138,5 +168,3 @@ class Node:
         if best_node is None:
             raise ValueError("No best child found: this node has no children.")
         return best_node
-
-   

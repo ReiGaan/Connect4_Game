@@ -213,7 +213,7 @@ def test_player_action_first_action():
         NO_PLAYER,
         BoardPiece,
         PLAYER1,
-        PlayerAction
+        PlayerAction,
     )
 
     board = initialize_game_state()
@@ -231,7 +231,13 @@ def test_player_action_some_full_spots():
     Checks to make an Player action in an not empty board,
     so checks that piece drops into the correct open row above existing pieces.
     """
-    from game_utils import apply_player_action, NO_PLAYER, PLAYER1, PLAYER2, PlayerAction
+    from game_utils import (
+        apply_player_action,
+        NO_PLAYER,
+        PLAYER1,
+        PLAYER2,
+        PlayerAction,
+    )
 
     board = np.array(
         [
@@ -270,7 +276,12 @@ def test_player_action_left_edge():
     """
     Checks to make an Player action in an empty board for edge position.
     """
-    from game_utils import apply_player_action, initialize_game_state, PLAYER1, PlayerAction
+    from game_utils import (
+        apply_player_action,
+        initialize_game_state,
+        PLAYER1,
+        PlayerAction,
+    )
 
     board = initialize_game_state()
     apply_player_action(board, PlayerAction(0), PLAYER1)
@@ -281,7 +292,13 @@ def test_multiple_actions_in_one_column():
     """
     Checks to make multiple Player action in an empty board in one column.
     """
-    from game_utils import apply_player_action, initialize_game_state, PLAYER1, PLAYER2,PlayerAction
+    from game_utils import (
+        apply_player_action,
+        initialize_game_state,
+        PLAYER1,
+        PLAYER2,
+        PlayerAction,
+    )
 
     board = initialize_game_state()
     apply_player_action(board, PlayerAction(3), PLAYER1)
@@ -384,7 +401,7 @@ def test_not_possible_player_action_():
         BoardPiece,
         PLAYER1,
         PLAYER2,
-        PlayerAction
+        PlayerAction,
     )
 
     with pytest.raises(ValueError) as excinfo:
@@ -410,7 +427,12 @@ def test_check_move_status_Valid():
     """
     Checks Move_status for valid input.
     """
-    from game_utils import initialize_game_state, check_move_status, MoveStatus, PlayerAction
+    from game_utils import (
+        initialize_game_state,
+        check_move_status,
+        MoveStatus,
+        PlayerAction,
+    )
 
     board = initialize_game_state()
     assert check_move_status(board, PlayerAction(2)) == MoveStatus.IS_VALID
@@ -420,7 +442,12 @@ def test_check_move_status_Bounds():
     """
     Checks Move_status for column out of bounds.
     """
-    from game_utils import initialize_game_state, check_move_status, MoveStatus, PlayerAction
+    from game_utils import (
+        initialize_game_state,
+        check_move_status,
+        MoveStatus,
+        PlayerAction,
+    )
 
     board = initialize_game_state()
     assert check_move_status(board, PlayerAction(7)) == MoveStatus.OUT_OF_BOUNDS
@@ -430,7 +457,13 @@ def test_check_move_status_Full():
     """
     Checks Move_status for full column.
     """
-    from game_utils import initialize_game_state, check_move_status, MoveStatus, PlayerAction, PLAYER1
+    from game_utils import (
+        initialize_game_state,
+        check_move_status,
+        MoveStatus,
+        PlayerAction,
+        PLAYER1,
+    )
 
     board = initialize_game_state()
     board[:, 2] = PLAYER1
@@ -472,6 +505,7 @@ def test_check_end_state():
     board_full[0, :] = NO_PLAYER
     assert (check_end_state(board_full, PLAYER2)) == GameState.STILL_PLAYING
 
+
 ###copilot ideas
 def test_backpropagation_credits_correct_player():
     from agents.agent_MCTS.node import Node
@@ -485,22 +519,34 @@ def test_backpropagation_credits_correct_player():
     assert root.wins[PLAYER1] == 1
     assert root.visits == 1
 
+
 def test_connected_four_detects_diagonal_win():
     from game_utils import connected_four, PLAYER1, NO_PLAYER
-    board = np.array([
-        [NO_PLAYER, NO_PLAYER, NO_PLAYER, PLAYER1],
-        [NO_PLAYER, NO_PLAYER, PLAYER1, NO_PLAYER],
-        [NO_PLAYER, PLAYER1, NO_PLAYER, NO_PLAYER],
-        [PLAYER1, NO_PLAYER, NO_PLAYER, NO_PLAYER],
-        [NO_PLAYER, NO_PLAYER, NO_PLAYER, NO_PLAYER],
-        [NO_PLAYER, NO_PLAYER, NO_PLAYER, NO_PLAYER],
-    ])
+
+    board = np.array(
+        [
+            [NO_PLAYER, NO_PLAYER, NO_PLAYER, PLAYER1],
+            [NO_PLAYER, NO_PLAYER, PLAYER1, NO_PLAYER],
+            [NO_PLAYER, PLAYER1, NO_PLAYER, NO_PLAYER],
+            [PLAYER1, NO_PLAYER, NO_PLAYER, NO_PLAYER],
+            [NO_PLAYER, NO_PLAYER, NO_PLAYER, NO_PLAYER],
+            [NO_PLAYER, NO_PLAYER, NO_PLAYER, NO_PLAYER],
+        ]
+    )
     assert connected_four(board, PLAYER1)
-    
+
+
 def test_simulation_switches_players_correctly():
     from agents.agent_MCTS.node import Node
     from agents.agent_MCTS.mcts import simulate
-    from game_utils import PLAYER1, PLAYER2, PlayerAction, apply_player_action, MoveStatus, check_move_status
+    from game_utils import (
+        PLAYER1,
+        PLAYER2,
+        PlayerAction,
+        apply_player_action,
+        MoveStatus,
+        check_move_status,
+    )
 
     # Set up a board where PLAYER1 can win in one move
     board = np.zeros((6, 7), dtype=np.int8)
@@ -509,7 +555,8 @@ def test_simulation_switches_players_correctly():
     result = simulate(node, PLAYER1)
     # PLAYER1 should win in simulation
     assert result[PLAYER1] == 1
-    
+
+
 def test_best_child_selects_winning_move():
     from agents.agent_MCTS.node import Node
     from game_utils import PLAYER1, PLAYER2, PlayerAction
@@ -526,9 +573,11 @@ def test_best_child_selects_winning_move():
 
     best = root.best_child()
     assert best is win_child
-    
+
+
 def test_action_type_consistency():
     from game_utils import PlayerAction
+
     a = PlayerAction(3)
     b = np.int8(3)
     assert a == b

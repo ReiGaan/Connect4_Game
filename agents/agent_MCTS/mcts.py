@@ -1,3 +1,21 @@
+"""
+This module implements the Monte Carlo Tree Search (MCTS) algorithm for game-playing agents.
+Functions:
+mcts_move(board, root_player, saved_state, iterationnumber=iterationnumber)
+    Perform the next move using the MCTS algorithm, returning the chosen action and updated tree node.
+simulate(node, player)
+    Simulate a random playout from the given node until the game ends, returning the result.
+    Backpropagate the simulation result up the tree, updating win and visit counts.
+expand_to_next_children(player, node)
+    Expand the current node by selecting and applying a valid move, prioritizing immediate wins or blocks.
+Constants:
+iterationnumber: Default number of MCTS iterations per move.
+Imports:
+numpy, game_utils (BoardPiece, PlayerAction, SavedState, apply_player_action, MoveStatus, check_move_status, get_opponent, PLAYER1, PLAYER2), Node
+Classes:
+Node: Represents a node in the MCTS tree (imported from .node).
+"""
+
 import numpy as np
 from game_utils import (
     BoardPiece,
@@ -7,16 +25,20 @@ from game_utils import (
     MoveStatus,
     check_move_status,
     get_opponent,
-    PLAYER1, PLAYER2
+    PLAYER1,
+    PLAYER2,
 )
 from .node import Node
 
 
-iterationnumber = 1000
+iterationnumber = 100
 
 
 def mcts_move(
-    board: np.ndarray, root_player: BoardPiece, saved_state: SavedState | None, iterationnumber: int = iterationnumber
+    board: np.ndarray,
+    root_player: BoardPiece,
+    saved_state: SavedState | None,
+    iterationnumber: int = iterationnumber,
 ) -> tuple[PlayerAction, SavedState | None]:
     """
     Perform next move of agent using the Monte Carlo Tree Search (MCTS) algorithm.
@@ -29,11 +51,14 @@ def mcts_move(
     Returns:
         tuple[PlayerAction, SavedState | None]: The chosen action and the updated tree node (saved state).
     """
-    if saved_state is not None and isinstance(saved_state, Node) and np.array_equal(saved_state.state, board) and saved_state.player == root_player:
-        print('Use saved state')
-        print(saved_state.state)
+    if (
+        saved_state is not None
+        and isinstance(saved_state, Node)
+        and np.array_equal(saved_state.state, board)
+        and saved_state.player == root_player
+    ):
         root_node = saved_state
-       
+
     else:
         root_node = Node(state=board, player=root_player, parent=None)
     current_node = root_node
@@ -45,22 +70,15 @@ def mcts_move(
         while node.is_fully_expanded() and not node.is_terminal:
             node = node.best_child()
         # === EXPANSION ===
-        if not node.is_terminal and not node.is_fully_expanded():
-            action, next_state = expand_to_next_children(player, node)
-            next_player = get_opponent(player)
-            child_node = node.expand(action, next_state, next_player) 
-            node = child_node
-            #player = next_player
-        #else:
-        #    break
-        
+        node = expansion(node, player)
+
         # === SIMULATION ===
         result = node.result if node.is_terminal else simulate(node, player)
 
         # === BACKPROPAGATION ===
         backpropagate(node, result)
 
-    # Choose the action of the most visited, for too low iterationnumber it happens that 
+    # Choose the action of the most visited, for too low iterationnumber it happens that
     # the children of the current node are empty, so we need to check if there are any children
     # before trying to get the most visited child, as iterationnumber could be too low
     if not current_node.children:
@@ -74,6 +92,28 @@ def mcts_move(
     saved_state = root_node
     return action, saved_state
 
+
+def expansion(node, player):
+    """
+    Expands the given node if it is not terminal and not fully expanded.
+    It selects the next possible action and state, creates a new child node for that action,
+    and returns the newly created child node. If the node is terminal or fully expanded, it returns the original node.
+
+    Args:
+        node: The current node in the MCTS tree to be expanded.
+        player: The player for whom the expansion is being performed.
+
+    Returns:
+        The expanded child node if expansion occurred, otherwise the original node.
+    """
+    if not node.is_terminal and not node.is_fully_expanded():
+        action, next_state = expand_to_next_children(player, node)
+        next_player = get_opponent(player)
+        child_node = node.expand(action, next_state, next_player)
+        node = child_node
+    return node
+
+
 def simulate(node: Node, player: BoardPiece) -> dict[BoardPiece, int]:
     """
     Simulate the following game turns from the current node using random play until the game ends.
@@ -81,30 +121,30 @@ def simulate(node: Node, player: BoardPiece) -> dict[BoardPiece, int]:
     Args:
         node (Node): The starting node for simulation.
         player (BoardPiece): The player whose turn it is.
-        
+
     Returns:
         dict[BoardPiece, int]: Mapping of each player to their simulation result score.
     """
     node_state = node.state.copy()
 
     while True:
-        valid_moves = [ col for col in range(node_state.shape[1])
+        valid_moves = [
+            col
+            for col in range(node_state.shape[1])
             if check_move_status(node_state, PlayerAction(col)) == MoveStatus.IS_VALID
         ]
-        node.get_valid_moves()
         if not valid_moves:
-            return {PLAYER1: 0, PLAYER2: 0} 
-        
+            return {PLAYER1: 0, PLAYER2: 0}
+
         action = np.random.choice(valid_moves)
         apply_player_action(node_state, PlayerAction(action), player)
-        
+
         terminal, result = Node(node_state, player).check_terminal_state()
         if terminal:
             return result
-        
+
         player = get_opponent(player)
 
-    return node.check_terminal_state()[1]
 
 def backpropagate(node: Node, result: dict[BoardPiece, int]) -> None:
     """
@@ -115,7 +155,7 @@ def backpropagate(node: Node, result: dict[BoardPiece, int]) -> None:
         result (dict[BoardPiece, int]): Simulation result mapping for each player.
     """
     current = node
-    
+
     while current is not None:
         current.visits += 1
 
@@ -124,9 +164,13 @@ def backpropagate(node: Node, result: dict[BoardPiece, int]) -> None:
         current = current.parent
 
 
-def expand_to_next_children(player: BoardPiece, node: Node) -> tuple[PlayerAction, np.ndarray]:
+def expand_to_next_children(
+    player: BoardPiece, node: Node
+) -> tuple[PlayerAction, np.ndarray]:
     """
-    Select and apply a random untried valid move from the current node's state.
+    Select and apply a valid move from the current node's state.
+    This function first checks for immediate win or block opponent's win, and if none are found,
+    randomly selects an untried action, this is a more strategic approach than the original random selection.
 
     Args:
         player (BoardPiece): The current player.
@@ -135,9 +179,30 @@ def expand_to_next_children(player: BoardPiece, node: Node) -> tuple[PlayerActio
     Returns:
         tuple[PlayerAction, np.ndarray]: The selected action and the resulting game state.
     """
+    opponent = get_opponent(player)
+    candidate_moves = []
+
+    for action in node.untried_actions:
+        next_state = node.state.copy()
+        apply_player_action(next_state, action, player)
+        candidate_moves.append((action, next_state))
+
+    # 1. Check for immediate win
+    for action, next_state in candidate_moves:
+        if Node(next_state, player).check_terminal_state()[0]:
+            return action, next_state
+
+    # 2. Check for opponent's immediate win (block it)
+    for action, next_state in candidate_moves:
+        for opp_action in range(next_state.shape[1]):
+            if check_move_status(next_state, PlayerAction(opp_action)) == MoveStatus.IS_VALID:
+                opp_state = next_state.copy()
+                apply_player_action(opp_state, PlayerAction(opp_action), opponent)
+                if Node(opp_state, opponent).check_terminal_state()[0]:
+                    return action, next_state
+
+    # Otherwise, pick randomly as before
     action = np.random.choice(list(node.untried_actions))
     next_state = node.state.copy()
-    apply_player_action(next_state, PlayerAction(action), player)
-    return PlayerAction(action), next_state
-
-
+    apply_player_action(next_state, action, player)
+    return action, next_state
