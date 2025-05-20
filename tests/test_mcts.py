@@ -1,6 +1,4 @@
 import numpy as np
-import pytest
-
 
 def test_backpropagation():
     """
@@ -24,7 +22,6 @@ def test_backpropagation():
     backpropagate(child_node_2, final_result)
 
     assert root_node.visits == 1 and root_node.wins[PLAYER1] == 1
-
 
 def test_mcts_never_plays_illegal_move():
     """
@@ -58,7 +55,9 @@ def test_mcts_never_plays_illegal_move():
 
         player = BoardPiece(1)
         saved_state = None
-        action, saved_state = mcts_move(board.copy(), player, saved_state, iterationnumber=10)
+        action, saved_state = mcts_move(
+            board.copy(), player, saved_state, iterationnumber=10
+        )
 
         try:
             action, saved_state = mcts_move(board.copy(), player, saved_state)
@@ -84,13 +83,24 @@ def test_mcts_always_wins_against_random():
     Test that the MCTS agent always wins against a random agent (baseline) in a series of Connect Four games.
     PLAYER1 uses the MCTS agent and PLAYER2 uses a random agent.
     """
-    from game_utils import initialize_game_state, PLAYER1, PLAYER2, PlayerAction, check_move_status, MoveStatus, apply_player_action
+    from game_utils import (
+        initialize_game_state,
+        PLAYER1,
+        PLAYER2,
+        PlayerAction,
+        check_move_status,
+        MoveStatus,
+        apply_player_action,
+    )
     from agents.agent_MCTS.mcts import mcts_move
     import numpy as np
 
     def random_agent(board, player):
-        valid_moves = [PlayerAction(col) for col in range(board.shape[1])
-                       if check_move_status(board, PlayerAction(col)) == MoveStatus.IS_VALID]
+        valid_moves = [
+            PlayerAction(col)
+            for col in range(board.shape[1])
+            if check_move_status(board, PlayerAction(col)) == MoveStatus.IS_VALID
+        ]
         return np.random.choice(valid_moves)
 
     num_games = 5
@@ -102,12 +112,15 @@ def test_mcts_always_wins_against_random():
 
         for _ in range(42):  # Max moves in Connect Four
             if player == PLAYER1:
-                action, saved_state = mcts_move(board.copy(), player, saved_state, iterationnumber=1000)
+                action, saved_state = mcts_move(
+                    board.copy(), player, saved_state, iterationnumber=1000
+                )
             else:
                 action = random_agent(board, player)
             apply_player_action(board, action, player)
             # Check for win
             from game_utils import connected_four
+
             if connected_four(board, player):
                 winner = player
                 break
@@ -115,6 +128,22 @@ def test_mcts_always_wins_against_random():
 
         assert winner == PLAYER1, f"MCTS did not win, winner was {winner}"
 
+def test_simulation_switches_players_correctly():
+    """
+    Tests that the simulation function correctly switches players during the simulation.
+    """
+    from agents.agent_MCTS.node import Node
+    from agents.agent_MCTS.mcts import simulate
+    from game_utils import PLAYER1, initialize_game_state
+
+    # Set up a board where PLAYER1 can win in one move
+    board = initialize_game_state()
+    board[5, 2:5] = PLAYER1
+    print(board)
+    node = Node(state=board, player=PLAYER1)
+    result = simulate(node, PLAYER1)
+    print(result)
+    assert result[PLAYER1] == 1
 
 def test_mcts_finds_winning_move_horizontal():
     """
@@ -132,7 +161,6 @@ def test_mcts_finds_winning_move_horizontal():
     action, _ = mcts_move(board.copy(), player, saved_state, iterationnumber=5000)
     print(action)
     assert action == PlayerAction(1) or action == PlayerAction(5)
-
 
 def test_mcts_finds_diagonal_win():
     """
@@ -188,7 +216,6 @@ def test_mcts_finds_diagonal_win():
     action, _ = mcts_move(board.copy(), player, saved_state)
     assert action == PlayerAction(3)
 
-
 def test_mcts_finds_diagonal_backslash_win():
     """
     Tests that MCTS finds a diagonal win in the "\" direction.
@@ -235,7 +262,6 @@ def test_mcts_finds_diagonal_backslash_win():
     action, _ = mcts_move(board.copy(), player, saved_state)
     assert action == PlayerAction(3)
 
-
 def test_mcts_finds_winning_move_other_player_starts():
     """
     Tests that MCTS selects the winning move when PLAYER2 is the agent and has a win available.
@@ -250,7 +276,6 @@ def test_mcts_finds_winning_move_other_player_starts():
 
     action, _ = mcts_move(board.copy(), player, saved_state)
     assert action == PlayerAction(1) or action == PlayerAction(5)
-
 
 def test_mcts_multiple_winning_moves():
     """
@@ -267,7 +292,6 @@ def test_mcts_multiple_winning_moves():
 
     action, _ = mcts_move(board.copy(), player, saved_state)
     assert action in [PlayerAction(0), PlayerAction(3), PlayerAction(6)]
-
 
 def test_mcts_defends_move_vertical():
     """
@@ -286,7 +310,6 @@ def test_mcts_defends_move_vertical():
     print(action)
 
     assert action == PlayerAction(2)
-
 
 def test_mcts_defends_diagonal():
     from game_utils import (
@@ -342,7 +365,6 @@ def test_mcts_defends_diagonal():
     print(action)
     assert action == PlayerAction(3)
 
-
 def test_mcts_defends_horizontal():
     """
     Tests that MCTS blocks a horizontal win by the opponent.
@@ -358,7 +380,6 @@ def test_mcts_defends_horizontal():
 
     action, _ = mcts_move(board.copy(), player, saved_state)
     assert action == PlayerAction(5)
-
 
 def test_mcts_defends_move_other_player_starts():
     """

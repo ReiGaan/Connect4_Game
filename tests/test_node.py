@@ -1,8 +1,10 @@
 import numpy as np
-import pytest
-
 
 def test_get_valid_moves_full_column():
+    """
+    Checks that if column is full its not in the list of valid
+    moves returned by get_valid_moves().
+    """
     from game_utils import PLAYER1, initialize_game_state
     from agents.agent_MCTS.node import Node
 
@@ -12,10 +14,9 @@ def test_get_valid_moves_full_column():
     valid_moves = node.get_valid_moves()
     assert 0 not in valid_moves, "Full column should not be a valid move"
 
-
 def test_get_valid_moves_edge_cases():
     """
-    Test edge cases for the Node class's get_valid_moves method.
+    Test edge cases for the get_valid_moves method.
 
     This test sets up a board where the first five rows and first four columns are filled by PLAYER1,
     then creates a Node with this board and asserts that only three valid moves remain.
@@ -29,17 +30,21 @@ def test_get_valid_moves_edge_cases():
     node = Node(board, PLAYER1)
     assert len(node.get_valid_moves()) == 3
 
-
 def test_check_terminal_state_empty_board():
-    from game_utils import PLAYER1, PLAYER2
+    """
+    Test that the Node correctly identifies as not terminal state.
+    """
+    from game_utils import PLAYER1
     from agents.agent_MCTS.node import Node
 
     state = np.zeros((6, 7), dtype=int)
     node = Node(state, PLAYER1)
     assert not node.is_terminal
 
-
 def test_check_terminal_state_winning_state():
+    """
+    Test that the Node correctly identifies a terminal state (winning).
+    """
     from game_utils import PLAYER1, PLAYER2
     from agents.agent_MCTS.node import Node
 
@@ -49,7 +54,6 @@ def test_check_terminal_state_winning_state():
     node = Node(state, PLAYER1)
     assert node.is_terminal
     assert node.result == {PLAYER1: 1, PLAYER2: -1}
-
 
 def test_expand():
     """Test expanding a node."""
@@ -62,7 +66,6 @@ def test_expand():
     next_state[5, 0] = PLAYER1
     child = node.expand(action, next_state, PLAYER2)
     assert node.children[action] == child and child.player == PLAYER2
-
 
 def test_is_fully_expanded():
     """
@@ -85,7 +88,6 @@ def test_is_fully_expanded():
 
     assert node.is_fully_expanded(), f"Node should be fully expanded, but untried_actions remain: {node.untried_actions}"
 
-
 def test_uct():
     """Test UCT calculation."""
     from game_utils import PLAYER1, PLAYER2, initialize_game_state
@@ -98,7 +100,6 @@ def test_uct():
     node.visits = 20
     uct_value = node.uct(child)
     assert uct_value > 0
-
 
 def test_best_child_selects_highest_uct():
     """
@@ -127,7 +128,6 @@ def test_best_child_selects_highest_uct():
     best = root_node.best_child()
     assert best is child1
 
-
 def test_best_child_with_unvisited_child():
     """
     Test that `best_child` returns unvisited child node when such a child exists as this ensures
@@ -144,3 +144,4 @@ def test_best_child_with_unvisited_child():
     root_node.visits = 1
 
     assert root_node.best_child() is child
+    

@@ -19,8 +19,7 @@ def test_initialize_game_state_type():
     from game_utils import initialize_game_state, BoardPiece, NO_PLAYER
 
     ret = initialize_game_state()
-    assert ret.dtype == BoardPiece
-    assert np.all(ret == NO_PLAYER)
+    assert ret.dtype == BoardPiece and np.all(ret == NO_PLAYER)
 
 
 def test_pretty_print_empty_board():
@@ -52,7 +51,7 @@ def test_pretty_print_empty_board():
     assert board_str == expected_output
 
 
-def test_pretty_printgiven_board():
+def test_pretty_print_given_board():
     """
     Tests visual string output with a specific, non-empty board state.
     """
@@ -189,7 +188,7 @@ def test_string_to_board_given_board():
     assert board_str.all() == expected_output.all()
 
 
-def test_pp_back():
+def test_pretty_print_and_parse_back():
     """
     Checks to initialize game, convert to visual string output and then back into NumPy array board.
     """
@@ -308,7 +307,9 @@ def test_multiple_actions_in_one_column():
 
 
 def test_connected_four_horizontal():
-    """ """
+    """
+    Test that a horizontal sequence of four connected PLAYER1 pieces is correctly detected.
+    """
     from game_utils import (
         connected_four,
         test_connect_horizontal,
@@ -323,7 +324,9 @@ def test_connected_four_horizontal():
 
 
 def test_connected_four_vertical():
-    """ """
+    """
+    Test that a vertical sequence of four connected PLAYER1 pieces is correctly detected.
+    """
     from game_utils import (
         connected_four,
         test_connect_vertical,
@@ -340,7 +343,7 @@ def test_connected_four_vertical():
 
 def test_connected_four_diagonal():
     """
-    Checks connect four diagonal and with Player2 this time.
+    Checks connect four diagonal ('/') and with Player2.
     """
     from game_utils import (
         test_connect_diagonal,
@@ -350,21 +353,34 @@ def test_connected_four_diagonal():
     )
 
     board = initialize_game_state()
-    board2 = initialize_game_state()
+
     # diagonle from bottom left to top right
     board[5, 1] = PLAYER2
     board[4, 2] = PLAYER2
     board[3, 3] = PLAYER2
     board[2, 4] = PLAYER2
+    assert test_connect_diagonal(board, PLAYER2) and connected_four(board, PLAYER2)
+
+
+def test_connected_four_diagonal_backslash():
+    """
+    Checks connect four diagonal ('\') and with Player2.
+    """
+    from game_utils import (
+        test_connect_diagonal,
+        connected_four,
+        initialize_game_state,
+        PLAYER2,
+    )
+
+    board2 = initialize_game_state()
+
     # diagonle from top left to bottom right
     board2[2, 1] = PLAYER2
     board2[3, 2] = PLAYER2
     board2[4, 3] = PLAYER2
     board2[5, 4] = PLAYER2
-    assert test_connect_diagonal(board, PLAYER2) == True
-    assert connected_four(board, PLAYER2) == True
-    assert test_connect_diagonal(board2, PLAYER2) == True
-    assert connected_four(board2, PLAYER2) == True
+    assert test_connect_diagonal(board2, PLAYER2) and connected_four(board2, PLAYER2)
 
 
 def test_connected_four_is_wrong():
@@ -384,10 +400,12 @@ def test_connected_four_is_wrong():
     board[2:5, 5] = PLAYER1
     board[2, 4] = PLAYER1
     print(board)
-    assert test_connect_vertical(board, PLAYER1) == False
-    assert test_connect_horizontal(board, PLAYER1) == False
-    assert test_connect_diagonal(board, PLAYER1) == False
-    assert connected_four(board, PLAYER1) == False
+    assert (
+        not test_connect_vertical(board, PLAYER1)
+        and not test_connect_horizontal(board, PLAYER1)
+        and not test_connect_diagonal(board, PLAYER1)
+        and not connected_four(board, PLAYER1)
+    )
 
 
 def test_not_possible_player_action_():
@@ -470,7 +488,7 @@ def test_check_move_status_Full():
     assert check_move_status(board, PlayerAction(2)) == MoveStatus.FULL_COLUMN
 
 
-def test_check_end_state():
+def test_check_end_state_draw_and_playing():
     """
     Checks end_state of game.
     """
@@ -500,82 +518,14 @@ def test_check_end_state():
             [PLAYER2, PLAYER1, PLAYER2, PLAYER1, PLAYER1, PLAYER1, PLAYER2],
         ]
     )
-    assert (check_end_state(board_full, PLAYER2)) == GameState.IS_DRAW
-    assert (check_end_state(board_full, PLAYER1)) == GameState.IS_DRAW
+    assert (check_end_state(board_full, PLAYER2)) == GameState.IS_DRAW and (check_end_state(board_full, PLAYER1)) == GameState.IS_DRAW
     board_full[0, :] = NO_PLAYER
     assert (check_end_state(board_full, PLAYER2)) == GameState.STILL_PLAYING
 
-
-###copilot ideas
-def test_backpropagation_credits_correct_player():
-    from agents.agent_MCTS.node import Node
-    from agents.agent_MCTS.mcts import backpropagate
-    from game_utils import PLAYER1, PLAYER2
-
-    root = Node(state=np.zeros((6, 7)), player=PLAYER1)
-    child = Node(state=np.zeros((6, 7)), player=PLAYER2, parent=root)
-    result = {PLAYER1: 1, PLAYER2: -1}
-    backpropagate(child, result)
-    assert root.wins[PLAYER1] == 1
-    assert root.visits == 1
-
-
-def test_connected_four_detects_diagonal_win():
-    from game_utils import connected_four, PLAYER1, NO_PLAYER
-
-    board = np.array(
-        [
-            [NO_PLAYER, NO_PLAYER, NO_PLAYER, PLAYER1],
-            [NO_PLAYER, NO_PLAYER, PLAYER1, NO_PLAYER],
-            [NO_PLAYER, PLAYER1, NO_PLAYER, NO_PLAYER],
-            [PLAYER1, NO_PLAYER, NO_PLAYER, NO_PLAYER],
-            [NO_PLAYER, NO_PLAYER, NO_PLAYER, NO_PLAYER],
-            [NO_PLAYER, NO_PLAYER, NO_PLAYER, NO_PLAYER],
-        ]
-    )
-    assert connected_four(board, PLAYER1)
-
-
-def test_simulation_switches_players_correctly():
-    from agents.agent_MCTS.node import Node
-    from agents.agent_MCTS.mcts import simulate
-    from game_utils import (
-        PLAYER1,
-        PLAYER2,
-        PlayerAction,
-        apply_player_action,
-        MoveStatus,
-        check_move_status,
-    )
-
-    # Set up a board where PLAYER1 can win in one move
-    board = np.zeros((6, 7), dtype=np.int8)
-    board[5, 2:5] = PLAYER1
-    node = Node(state=board, player=PLAYER1)
-    result = simulate(node, PLAYER1)
-    # PLAYER1 should win in simulation
-    assert result[PLAYER1] == 1
-
-
-def test_best_child_selects_winning_move():
-    from agents.agent_MCTS.node import Node
-    from game_utils import PLAYER1, PLAYER2, PlayerAction
-
-    root = Node(state=np.zeros((6, 7)), player=PLAYER1)
-    # Simulate two children: one with a win, one with a loss
-    win_child = Node(state=np.zeros((6, 7)), player=PLAYER2, parent=root)
-    lose_child = Node(state=np.zeros((6, 7)), player=PLAYER2, parent=root)
-    root.children = {PlayerAction(0): win_child, PlayerAction(1): lose_child}
-    win_child.visits = 10
-    win_child.wins[PLAYER1] = 10
-    lose_child.visits = 10
-    lose_child.wins[PLAYER1] = 0
-
-    best = root.best_child()
-    assert best is win_child
-
-
 def test_action_type_consistency():
+    """
+    Test that a PlayerAction instance is considered equal to a numpy int8.
+    """
     from game_utils import PlayerAction
 
     a = PlayerAction(3)
