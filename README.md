@@ -51,9 +51,14 @@ Game/
 ├── agents/
 │   ├── agent_MCTS/
 │   │   ├── mcts.py
-│   │   └── Node.py
-│   ├── agent_human_user.py
-│   └── agent_random.py
+│   │   ├── Node.py
+|   |   └── __init__.py
+│   ├── agent_random/
+│   │   ├── human_user.py
+│   │   └── __init__.py
+│   └── agent_human_user/
+│       ├── human_user.py
+│       └── __init__.py
 ├── tests/
 │   ├── test_game_utils.py
 │   ├── test_node.py
