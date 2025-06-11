@@ -4,7 +4,8 @@ from game_utils import PLAYER1, PLAYER2, PLAYER1_PRINT, PLAYER2_PRINT, GameState
 from game_utils import initialize_game_state, pretty_print_board, apply_player_action, check_end_state, check_move_status
 from agents.agent_human_user import user_move
 from agents.agent_random import generate_move as random_move
-from agents.agent_MCTS.mcts import mcts_move as generate_move_msct
+from agents.agent_MCTS.mcts import MCTSAgent
+from agents.agent_MCTS.improved_mcts import ImprovedMCTSAgent
 
 def  human_vs_agent(
     generate_move_1: GenMove,
@@ -120,6 +121,8 @@ if __name__ == "__main__":
     print("2: User vs MCTS Agent")
     print("3: MCTS Agent vs Random Agent (baseline test)")
     print("4: Human vs Human (2 players)")
+    print("5: MCTS Agent vs Improved MCTS Agent")
+    print("6: Improved MCTS Agent vs random Agent (baseline test)")
     mode = input("Enter number: ").strip()
 
     if mode == "1":
@@ -132,7 +135,7 @@ if __name__ == "__main__":
     elif mode == "2":
         human_vs_agent(
             user_move,
-            generate_move_msct,
+            MCTSAgent(100),
             player_1="You",
             player_2="MCTS Agent",
             args_2=(100,)  # You can change the number of iterations here, as my agent first look for immediate win or block opponent's win dont use large iterationnumber 
@@ -146,6 +149,20 @@ if __name__ == "__main__":
             user_move,
             player_1="Player 1",
             player_2="Player 2"
+        )
+    elif mode == "5":
+        human_vs_agent(
+        MCTSAgent(100),  
+        ImprovedMCTSAgent(100),  
+        player_1="MCTS Agent",
+        player_2="Improved MCTS Agent"
+       )
+    elif mode == "6":
+        human_vs_agent(
+            ImprovedMCTSAgent(100),  
+            random_move,  
+            player_1="Improved MCTS Agent",
+            player_2="Random Agent"
         )
     else:
         print("Invalid selection.")
