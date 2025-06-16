@@ -1,0 +1,9 @@
+https://towardsdatascience.com/alphazero-chess-how-it-works-what-sets-it-apart-and-what-it-can-tell-us-4ab3d2d08867/
+https://www.kaggle.com/code/auxeno/alphazero-connect-4-rl
+
+GUI
+https://github.com/saiduc/Connect-4-Tkinter/blob/master/gamegui.py
+
+About Connect 4: 
+https://www.rd.com/article/how-to-win-connect-4/
+https://papergames.io/docs/game-guides/connect4/

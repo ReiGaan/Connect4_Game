@@ -3,6 +3,8 @@
 This project implements software agents that play the game Connect Four.  
 The main focus is on applying principles of software development, especially clean code.
 
+https://miro.com/app/board/uXjVIsyA0Qk=/
+
 ## Agents
 
 - **MCTS Agent:** Plays Connect Four using Monte Carlo Tree Search.
