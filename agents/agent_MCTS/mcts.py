@@ -31,10 +31,8 @@ from game_utils import (
 from .node import Node
 
 
-iterationnumber = 100
-
 class MCTSAgent: 
-    def __init__(self, iterationnumber: int = iterationnumber):
+    def __init__(self, iterationnumber: int = 100):
         """
         Initialize the MCTS agent with a specified number of iterations.
 
@@ -47,7 +45,6 @@ class MCTSAgent:
         board: np.ndarray,
         root_player: BoardPiece,
         saved_state: SavedState | None,
-        iterationnumber: int = iterationnumber,
     ) -> tuple[PlayerAction, SavedState | None]:
         """
         Perform next move of agent using the Monte Carlo Tree Search (MCTS) algorithm.
@@ -71,7 +68,7 @@ class MCTSAgent:
         else:
             root_node = Node(state=board, player=root_player, parent=None)
         current_node = root_node
-        for _ in range(iterationnumber):
+        for _ in range(self.iterationnumber):
             node = current_node
             player = root_player
 
@@ -195,20 +192,6 @@ class MCTSAgent:
             next_state = node.state.copy()
             apply_player_action(next_state, action, player)
             candidate_moves.append((action, next_state))
-
-        # # 1. Check for immediate win
-        # for action, next_state in candidate_moves:
-        #     if Node(next_state, player).check_terminal_state()[0]:
-        #         return action, next_state
-
-        # # 2. Check for opponent's immediate win (block it)
-        # for action, next_state in candidate_moves:
-        #     for opp_action in range(next_state.shape[1]):
-        #         if check_move_status(next_state, PlayerAction(opp_action)) == MoveStatus.IS_VALID:
-        #             opp_state = next_state.copy()
-        #             apply_player_action(opp_state, PlayerAction(opp_action), opponent)
-        #             if Node(opp_state, opponent).check_terminal_state()[0]:
-        #                 return action, next_state
 
         # Otherwise, pick randomly as before
         action = np.random.choice(list(node.untried_actions))

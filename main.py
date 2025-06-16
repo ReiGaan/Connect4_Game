@@ -89,7 +89,7 @@ def run_mcts_vs_random(num_games: int = 100):
     for _ in range(num_games):
         print(f"Game {_ + 1}/{num_games}")
        
-        results = human_vs_agent(generate_move_1=generate_move_msct, 
+        results = human_vs_agent(generate_move_1=MCTSAgent(100), 
                                 generate_move_2=random_move, 
                                 player_1="MCTS Agent", 
                                 player_2="Random Agent")
@@ -159,7 +159,7 @@ if __name__ == "__main__":
        )
     elif mode == "6":
         human_vs_agent(
-            ImprovedMCTSAgent(100),  
+            ImprovedMCTSAgent(25),  
             random_move,  
             player_1="Improved MCTS Agent",
             player_2="Random Agent"
