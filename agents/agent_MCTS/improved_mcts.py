@@ -6,6 +6,31 @@ from .node import Node
 import numpy as np
 
 class ImprovedMCTSAgent(MCTSAgent):
+    """An improved MCTS agent for Connect4 with heuristic-guided simulation 
+    and MinMax integration.
+    This agent extends the base MCTSAgent by several enhancements:
+    - Uses MinMax search for critical moves when the simulation depth exceeds a threshold.
+    - During expansion, prioritizes immediate winning moves and blocks opponent's immediate wins.
+    - In simulations, prefers moves that create two- or three-in-a-row, and favors the center column.
+    Functions:
+        minmax_move(board, player) -> PlayerAction:
+            Performs a MinMax search to select the best move for the current player.
+        minmax(board, player, depth) -> int:
+            Recursively evaluates moves using MinMax up to a specified depth.
+        expand_to_next_children(player, node) -> tuple[PlayerAction, np.ndarray]:
+            Expands the tree by selecting a move, prioritizing immediate wins and blocks.
+        count_n_in_a_row(board, player, n) -> int:
+            Counts the number of n-in-a-row occurrences for the given player.
+        simulate(node, player) -> dict[BoardPiece, int]:
+            Performs a heuristic-guided simulation from the given node.
+        __call__(board, player, saved_state, *args):
+            Returns the agent's move using MCTS.
+    Attributes:
+        iterationnumber (int): Number of MCTS iterations per move.
+        max_depth_for_minmax (int): Depth threshold for switching to MinMax in simulation.
+        max_simulation_depth (int): Maximum depth for simulation rollouts.
+    """
+        
     def __init__(self, iterationnumber: int = 50, max_depth_for_minmax: int = 20, max_simulation_depth: int = 40):
         super().__init__(iterationnumber)
         self.max_depth_for_minmax = max_depth_for_minmax 
@@ -15,6 +40,11 @@ class ImprovedMCTSAgent(MCTSAgent):
         """
         Perform a MinMax search to find the best move for the current player.
         This function returns the action that leads to the best possible state.
+        Args:
+            board (np.ndarray): The current game board state.
+            player (BoardPiece): The player for whom to find the best move.
+        Returns:
+            PlayerAction: The best action for the player based on MinMax evaluation.
         """
         # Define the base MinMax logic (example, adjust for your game rules)
         best_score = -float('inf')
@@ -35,6 +65,12 @@ class ImprovedMCTSAgent(MCTSAgent):
         """
         Perform a MinMax search with a specified depth.
         This function recursively evaluates all possible moves for the given player.
+        Args:
+            board (np.ndarray): The current game board state.               
+            player (BoardPiece): The player for whom to evaluate moves.
+            depth (int): The depth to search in the tree.
+        Returns:
+            int: The score for the player at the current board state.
         """
         terminal, result = Node(board, player).check_terminal_state()
         if terminal:
@@ -69,7 +105,6 @@ class ImprovedMCTSAgent(MCTSAgent):
         Args:
             player (BoardPiece): The current player.
             node (Node): The node to expand.
-
         Returns:
             tuple[PlayerAction, np.ndarray]: The selected action and the resulting game state.
         """
