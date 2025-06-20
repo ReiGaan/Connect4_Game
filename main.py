@@ -204,3 +204,9 @@ if __name__ == "__main__":
     # Always show metrics summary
     print("\nFinal Performance Metrics:")
     print(metrics)
+
+    # Ask user if they want to see visualizations
+    plot_choice = input("\nWould you like to see performance visualizations? (y/n): ").strip().lower()
+    if plot_choice == 'y':
+        metrics.plot_results()
+    
