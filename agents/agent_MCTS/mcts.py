@@ -73,8 +73,7 @@ class MCTSAgent:
             player = root_player
 
             # === SELECTION ===
-            while node.is_fully_expanded() and not node.is_terminal:
-                node = node.best_child()
+            node = self.selection_process(node)
             # === EXPANSION ===
             node = self.expansion(node, player)
 
@@ -97,6 +96,20 @@ class MCTSAgent:
         apply_player_action(root_node.state, action, root_player)
         saved_state = root_node
         return action, saved_state
+
+    def selection_process(self, node):
+        """
+        Traverses the tree from the given node by repeatedly selecting the best child node
+        until a node is found that is either not fully expanded or is a terminal node.
+        Args:
+            node: The starting node for the selection process.
+        Returns:
+            The first node encountered that is either not fully expanded or is a terminal node.
+        """
+        
+        while node.is_fully_expanded() and not node.is_terminal:
+            node = node.best_child()
+        return node
 
 
     def expansion(self, node, player):

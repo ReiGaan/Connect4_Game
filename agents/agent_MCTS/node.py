@@ -39,7 +39,7 @@ class Node:
         result (dict): The result of the game, if node is terminal.
     """
 
-    def __init__(self, state: np.ndarray, player: BoardPiece, parent=None):
+    def __init__(self, state: np.ndarray, player: BoardPiece, parent=None, prior: float = 0.0):
         """
         Initialize a Node for MCTS.
 
@@ -59,6 +59,7 @@ class Node:
         self.wins = {PLAYER1: 0, PLAYER2: 0}
         self.untried_actions = set(self.get_valid_moves())
         self.is_terminal, self.result = self.check_terminal_state()
+        self.prior = prior 
 
     def check_terminal_state(self) -> tuple[bool, dict | None]:
         """
@@ -104,7 +105,7 @@ class Node:
         ]
 
     def expand(
-        self, action: PlayerAction, next_state: np.ndarray, next_player: BoardPiece
+        self, action: PlayerAction, next_state: np.ndarray, next_player: BoardPiece, prior: float = 0.0
     ) -> "Node":
         """
         Expand the current node by adding a child node for the given action.
@@ -117,7 +118,7 @@ class Node:
         Returns:
             child_node (Node): The newly created child node.
         """
-        child_node = Node(next_state, next_player, parent=self)
+        child_node = Node(next_state, next_player, parent=self, prior=prior)
         self.children[action] = child_node
         self.untried_actions.discard(action)
         return child_node
@@ -149,6 +150,24 @@ class Node:
         )
         return exploitation + exploration
 
+    def puct (self, child: "Node", exploration_param: float = np.sqrt(2)) -> float:
+        """
+        Calculate the PUCT score for a child node.
+
+        Args:
+            prior (float): Prior probability P(s,a) from policy network.
+            child (Node): The child node to evaluate.
+            exploration_param (float): The exploration parameter for PUCT.
+        Returns:
+            float: The PUCT score for the node.
+        """
+        if child.visits == 0:
+            return float("inf")
+        exploitation = child.wins[self.player] / child.visits
+        exploration = exploration_param * child.prior * np.sqrt((self.visits) /1 + child.visits
+        )
+        return exploitation + exploration
+    
     def best_child(self) -> "Node":
         """
         Select the child node with the highest UCT score.
@@ -164,6 +183,26 @@ class Node:
 
             if score > best_uct_value:
                 best_uct_value = score
+                best_node = child
+        if best_node is None:
+            raise ValueError("No best child found: this node has no children.")
+        return best_node
+
+    def best_child_based_prior_knowledge(self) -> "Node":
+        """
+        Select the child node with the highest PUCT score.
+
+        Returns:
+            best_child (Node): The child node with the highest PUCT value.
+        """
+        best_puct_value = float("-inf")
+        best_node = None
+
+        for action, child in self.children.items():
+            score = self.puct(child)
+
+            if score > best_puct_value:
+                best_puct_value = score
                 best_node = child
         if best_node is None:
             raise ValueError("No best child found: this node has no children.")
