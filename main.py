@@ -54,9 +54,10 @@ def human_vs_agent(
                 print(
                     f'{player_name} you are playing with {PLAYER1_PRINT if player == PLAYER1 else PLAYER2_PRINT}'
                 )
+
                 action, saved_state[player] = gen_move(
                     board.copy(),  
-                    player, saved_state[player], *args
+                    player, saved_state[player], player_name, metrics, *args
                 )
                 elapsed = time.time() - t0
                 print(f'Move time: {elapsed:.3f}s')

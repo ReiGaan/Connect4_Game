@@ -1,7 +1,7 @@
 import numpy as np
 from game_utils import BoardPiece, PlayerAction, SavedState, check_move_status, MoveStatus
-
-def generate_move_random(board: np.ndarray, player: BoardPiece, saved_state: SavedState | None
+from metrics.metrics import GameMetrics
+def generate_move_random(board: np.ndarray, player: BoardPiece, saved_state: SavedState | None, player_name: str, metrics: GameMetrics | None = None,
 ) -> tuple[PlayerAction, SavedState | None]:
     """
     Generates a random valid move for the current player.

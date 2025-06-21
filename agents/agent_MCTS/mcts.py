@@ -28,6 +28,7 @@ from game_utils import (
     PLAYER1,
     PLAYER2,
 )
+from metrics.metrics import GameMetrics
 from .node import Node
 
 
@@ -38,6 +39,8 @@ def mcts_move(
     board: np.ndarray,
     root_player: BoardPiece,
     saved_state: SavedState | None,
+    player_name: str,
+    metrics: GameMetrics | None = None,
     iterationnumber: int = iterationnumber,
 ) -> tuple[PlayerAction, SavedState | None]:
     """

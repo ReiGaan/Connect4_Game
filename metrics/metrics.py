@@ -106,8 +106,15 @@ class GameMetrics:
                 colors = ['#4CAF50', '#F44336', '#FFC107']
                 explode = (0.1, 0, 0)
                 
-                plt.pie(sizes, labels=labels, colors=colors, autopct='%1.1f%%',
-                        shadow=True, startangle=140, explode=explode)
+                wedges, texts, autotexts = plt.pie(
+                    sizes, colors=colors, autopct='%1.1f%%',
+                    shadow=True, startangle=140, explode=explode,
+                    textprops=dict(color="white")
+                )
+
+                plt.legend(wedges, labels, title="Outcome", loc="center left", bbox_to_anchor=(1, 0, 0.5, 1))
+
+
                 plt.title(f'{agent} Results Distribution')
                 break  # Only show first agent for clarity
         
