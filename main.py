@@ -6,6 +6,10 @@ from agents.agent_human_user import user_move
 from agents.agent_random import generate_move as random_move
 from agents.agent_MCTS.mcts import MCTSAgent
 from agents.agent_MCTS.improved_mcts import ImprovedMCTSAgent
+from agents.agent_MCTS.alphazero_mcts import AlphazeroMCTSAgent
+from agents.alphazero.network import Connect4Net
+from agents.alphazero.inference import policy_value
+import torch 
 
 def  human_vs_agent(
     generate_move_1: GenMove,
@@ -115,6 +119,15 @@ def run_mcts_vs_random(num_games: int = 100):
     print(f"Draws: {draws}")
     print(f"Errors: {errors}")    
 
+model = Connect4Net()
+model.load_state_dict(torch.load("agents/alphazero/model.pt", map_location="cpu"))
+model.eval()
+
+# Wrap into policy_value_fn
+alpha_agent = AlphazeroMCTSAgent(
+    policy_value=lambda state: policy_value(state, model),
+    iterationnumber=100
+)
 if __name__ == "__main__":
     print("Choose game mode:")
     print("1: User vs Random Agent")
@@ -123,6 +136,7 @@ if __name__ == "__main__":
     print("4: Human vs Human (2 players)")
     print("5: MCTS Agent vs Improved MCTS Agent")
     print("6: Improved MCTS Agent vs random Agent (baseline test)")
+    print("7: AlphaZero Agent vs Random Agent")
     mode = input("Enter number: ").strip()
 
     if mode == "1":
@@ -164,5 +178,12 @@ if __name__ == "__main__":
             player_1="Improved MCTS Agent",
             player_2="Random Agent"
         )
+    elif mode == "7":
+        human_vs_agent(
+        alpha_agent,
+        random_move,
+        player_1="AlphaZero Agent",
+        player_2="Random Agent"
+    )
     else:
         print("Invalid selection.")
