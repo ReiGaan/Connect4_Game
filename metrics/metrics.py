@@ -121,7 +121,7 @@ class GameMetrics:
     def plot_results(self, save_path: str = None, show: bool = True):
         """
         Generates visualizations of agent performance.
-
+        
         Args:
             save_path: Optional path to save the plot image.
             show: Whether to display the plot on screen.
@@ -133,26 +133,45 @@ class GameMetrics:
         agent_names = list(self.agents.keys())
         plt.figure(figsize=(14, 10))
 
+        # Subplot 1: Game Outcomes (Grouped Bar Chart)
         plt.subplot(2, 2, 1)
-        for agent in agent_names:
-            wins = self.agents[agent]['wins']
-            losses = self.agents[agent]['losses']
-            draws = self.agents[agent]['draws']
-            total = wins + losses + draws
-            if total > 0:
-                sizes = [wins, losses, draws]
-                labels = ['Wins', 'Losses', 'Draws']
-                colors = ['#4CAF50', '#F44336', '#FFC107']
-                explode = (0.1, 0, 0)
-                wedges, texts, autotexts = plt.pie(
-                    sizes, colors=colors, autopct='%1.1f%%',
-                    shadow=True, startangle=140, explode=explode,
-                    textprops=dict(color="white")
-                )
-                plt.legend(wedges, labels, title="Outcome", loc="center left", bbox_to_anchor=(1, 0, 0.5, 1))
-                plt.title(f'{agent} Results Distribution')
-                break
+        total_games = [
+            self.agents[agent]['wins'] + self.agents[agent]['losses'] + self.agents[agent]['draws'] 
+            for agent in agent_names
+        ]
+        win_percentages = [
+            self.agents[agent]['wins'] / total_games[i] * 100 if total_games[i] > 0 else 0.0 
+            for i, agent in enumerate(agent_names)
+        ]
+        loss_percentages = [
+            self.agents[agent]['losses'] / total_games[i] * 100 if total_games[i] > 0 else 0.0 
+            for i, agent in enumerate(agent_names)
+        ]
+        draw_percentages = [
+            self.agents[agent]['draws'] / total_games[i] * 100 if total_games[i] > 0 else 0.0 
+            for i, agent in enumerate(agent_names)
+        ]
 
+        x = np.arange(len(agent_names))
+        width = 0.25
+
+        plt.bar(x - width, win_percentages, width, label='Wins', color='#4CAF50')
+        plt.bar(x, loss_percentages, width, label='Losses', color='#F44336')
+        plt.bar(x + width, draw_percentages, width, label='Draws', color='#FFC107')
+
+        plt.ylabel('Percentage (%)')
+        plt.title('Game Outcomes by Agent')
+        plt.xticks(x, agent_names)
+        plt.legend()
+        plt.ylim(0, 100)
+
+        # Annotate percentages on bars
+        for i in range(len(agent_names)):
+            plt.text(x[i] - width, win_percentages[i] + 1, f'{win_percentages[i]:.1f}%', ha='center', va='bottom')
+            plt.text(x[i], loss_percentages[i] + 1, f'{loss_percentages[i]:.1f}%', ha='center', va='bottom')
+            plt.text(x[i] + width, draw_percentages[i] + 1, f'{draw_percentages[i]:.1f}%', ha='center', va='bottom')
+
+        # Subplot 2: Win Rates
         plt.subplot(2, 2, 2)
         win_rates = [self.win_rate(agent) * 100 for agent in agent_names]
         bars = plt.bar(agent_names, win_rates, color='#2196F3')
@@ -161,9 +180,13 @@ class GameMetrics:
         plt.ylim(0, 100)
         for bar in bars:
             height = bar.get_height()
-            plt.annotate(f'{height:.1f}%', xy=(bar.get_x() + bar.get_width() / 2, height),
-                         xytext=(0, 3), textcoords="offset points", ha='center', va='bottom')
+            plt.annotate(f'{height:.1f}%', 
+                        xy=(bar.get_x() + bar.get_width() / 2, height),
+                        xytext=(0, 3), 
+                        textcoords="offset points", 
+                        ha='center', va='bottom')
 
+        # Subplot 3: Move Accuracy
         plt.subplot(2, 2, 3)
         accuracies = [self.move_accuracy(agent) * 100 for agent in agent_names]
         bars = plt.bar(agent_names, accuracies, color='#9C27B0')
@@ -172,9 +195,13 @@ class GameMetrics:
         plt.ylim(0, 100)
         for bar in bars:
             height = bar.get_height()
-            plt.annotate(f'{height:.1f}%', xy=(bar.get_x() + bar.get_width() / 2, height),
-                         xytext=(0, 3), textcoords="offset points", ha='center', va='bottom')
+            plt.annotate(f'{height:.1f}%', 
+                        xy=(bar.get_x() + bar.get_width() / 2, height),
+                        xytext=(0, 3), 
+                        textcoords="offset points", 
+                        ha='center', va='bottom')
 
+        # Subplot 4: Time per Move
         plt.subplot(2, 2, 4)
         times = [self.time_per_move(agent) for agent in agent_names]
         bars = plt.bar(agent_names, times, color='#FF9800')
@@ -182,8 +209,11 @@ class GameMetrics:
         plt.title('Average Time per Move')
         for bar in bars:
             height = bar.get_height()
-            plt.annotate(f'{height:.4f}s', xy=(bar.get_x() + bar.get_width() / 2, height),
-                         xytext=(0, 3), textcoords="offset points", ha='center', va='bottom')
+            plt.annotate(f'{height:.4f}s', 
+                        xy=(bar.get_x() + bar.get_width() / 2, height),
+                        xytext=(0, 3), 
+                        textcoords="offset points", 
+                        ha='center', va='bottom')
 
         plt.tight_layout(pad=3.0)
 
