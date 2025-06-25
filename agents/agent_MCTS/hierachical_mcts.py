@@ -33,7 +33,7 @@ class HierachicalMCTSAgent(MCTSAgent):
         max_simulation_depth (int): Maximum depth for simulation rollouts.
     """
         
-    def __init__(self, iterationnumber: int = 50, max_depth_for_minmax: int = 20, max_simulation_depth: int = 40):
+    def __init__(self, iterationnumber: int = 50, max_depth_for_minmax: int = 10, max_simulation_depth: int = 40):
         super().__init__(iterationnumber)
         self.max_depth_for_minmax = max_depth_for_minmax 
         self.max_simulation_depth = max_simulation_depth
@@ -57,7 +57,7 @@ class HierachicalMCTSAgent(MCTSAgent):
             if check_move_status(board, PlayerAction(col)) == MoveStatus.IS_VALID:
                 temp_board = board.copy()
                 apply_player_action(temp_board, PlayerAction(col), player)
-                score = self.minmax(temp_board, get_opponent(player), root_player=root_player, depth=3, alpha=-float('inf'), beta=float('inf'))
+                score = self.minmax(temp_board, get_opponent(player), root_player=root_player, depth=7, alpha=-float('inf'), beta=float('inf'))
                 if score > best_score:
                     best_score = score
                     best_move = PlayerAction(col)
@@ -83,7 +83,11 @@ class HierachicalMCTSAgent(MCTSAgent):
             return result[root_player]  # Evaluate from root player's perspective
 
         if depth == 0:
-            return 0  # Neutral evaluation at depth limit
+           return (
+            9 * self.count_n_in_a_row(board, root_player, 3) +
+            3 * self.count_n_in_a_row(board, root_player, 2) -
+            4 * self.count_n_in_a_row(board, get_opponent(root_player), 3)
+        )
 
         if player == root_player:
             best_score = -float('inf')
@@ -147,7 +151,23 @@ class HierachicalMCTSAgent(MCTSAgent):
                         return action, next_state
 
         #Otherwise still, pick randomly as before
-        action = np.random.choice(list(node.untried_actions))
+        best_score = -float("inf")
+        best_action = []
+        for action in node.untried_actions:
+            temp_state = node.state.copy()
+            apply_player_action(temp_state, action, player)
+            score = (
+                9 * self.count_n_in_a_row(temp_state, player, 3) +
+                3 * self.count_n_in_a_row(temp_state, player, 2)
+            )
+            if action == temp_state.shape[1] // 2: 
+                score += 1
+            if score > best_score:
+                best_score = score
+                best_action = [action]
+            elif score == best_score:
+                best_action.append(action)
+        action = np.random.choice(best_action)
         next_state = node.state.copy()
         apply_player_action(next_state, action, player)
         return action, next_state
@@ -196,7 +216,7 @@ class HierachicalMCTSAgent(MCTSAgent):
             dict[BoardPiece, int]: The result of the simulation for each player.
         """
         root_player = player
-        node_state = node.state
+        node_state = node.state.copy()
         depth = 0 
         self.max_simulation_depth = 20
         while depth < self.max_simulation_depth:

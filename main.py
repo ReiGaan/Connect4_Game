@@ -214,18 +214,23 @@ if __name__ == "__main__":
             metrics=metrics
         )
     elif mode == "5":
-        human_vs_agent(
-        MCTSAgent(100),  
-        HierachicalMCTSAgent(50),  
-        player_1="MCTS Agent",
-        player_2="hierachical MCTS Agent"
-       )
+        num_games = int(input("How many games? "))
+        for _ in range(num_games):
+            print(f"Game {_ + 1}/{num_games}")
+            human_vs_agent(
+            MCTSAgent(100),  
+            HierachicalMCTSAgent(iterationnumber=50),  
+            player_1="MCTS Agent",
+            player_2="hierachical MCTS Agent",
+            metrics=metrics
+            )
     elif mode == "6":
         human_vs_agent(
             HierachicalMCTSAgent(25),  
             random_move,  
             player_1="hierachical MCTS Agent",
-            player_2="Random Agent"
+            player_2="Random Agent",
+            metrics=metrics
         )
     elif mode == "7":
         human_vs_agent(
