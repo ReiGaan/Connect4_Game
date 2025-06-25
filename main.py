@@ -4,8 +4,13 @@ from game_utils import PLAYER1, PLAYER2, PLAYER1_PRINT, PLAYER2_PRINT, GameState
 from game_utils import initialize_game_state, pretty_print_board, apply_player_action, check_end_state, check_move_status
 from agents.agent_human_user import user_move
 from agents.agent_random import generate_move as random_move
-from agents.agent_MCTS.mcts import mcts_move as generate_move_mcts
 from metrics.metrics import GameMetrics
+from agents.agent_MCTS.mcts import MCTSAgent
+from agents.agent_MCTS.improved_mcts import ImprovedMCTSAgent
+from agents.agent_MCTS.alphazero_mcts import AlphazeroMCTSAgent
+from agents.alphazero.network import Connect4Net
+from agents.alphazero.inference import policy_value
+import torch 
 
 
 def human_vs_agent(
@@ -116,18 +121,16 @@ def run_mcts_vs_random(num_games: int = 100):
     random_wins_not_started = 0
     draws = 0
     errors = 0
-    
-    for i in range(num_games):
-        print(f"\nGame {i + 1}/{num_games}")
-        results, metrics = human_vs_agent(
-            generate_move_1=generate_move_mcts, 
-            generate_move_2=random_move, 
-            player_1="MCTS Agent", 
-            player_2="Random Agent",
-            metrics=total_metrics
-        )
-        
-        # Update win counters
+    total = []
+    for _ in range(num_games):
+        print(f"Game {_ + 1}/{num_games}")
+       
+        results = human_vs_agent(generate_move_1=MCTSAgent(100), 
+                                generate_move_2=random_move, 
+                                player_1="MCTS Agent", 
+                                player_2="Random Agent",
+                                metrics=total_metrics)
+        total.append(results)
         if results[0] == PLAYER1_PRINT:
             mcts_wins_started += 1
         elif results[0] == PLAYER2_PRINT:
@@ -160,6 +163,15 @@ def run_mcts_vs_random(num_games: int = 100):
     print(total_metrics)
     return total_metrics
 
+model = Connect4Net()
+model.load_state_dict(torch.load("agents/alphazero/model.pt", map_location="cpu"))
+model.eval()
+
+# Wrap into policy_value_fn
+alpha_agent = AlphazeroMCTSAgent(
+    policy_value=lambda state: policy_value(state, model),
+    iterationnumber=100
+)
 if __name__ == "__main__":
     print("Connect Four Game")
     print("Choose game mode:")
@@ -167,6 +179,9 @@ if __name__ == "__main__":
     print("2: User vs MCTS Agent")
     print("3: MCTS Agent vs Random Agent (performance test)")
     print("4: Human vs Human (2 players)")
+    print("5: MCTS Agent vs Improved MCTS Agent")
+    print("6: Improved MCTS Agent vs random Agent (baseline test)")
+    print("7: AlphaZero Agent vs Random Agent")
     mode = input("Enter number: ").strip()
     metrics = GameMetrics()
 
@@ -181,7 +196,7 @@ if __name__ == "__main__":
     elif mode == "2":
         _, metrics = human_vs_agent(
             user_move,
-            generate_move_mcts,
+            MCTSAgent(100),
             player_1="You",
             player_2="MCTS Agent",
             args_2=(100,),
@@ -198,6 +213,27 @@ if __name__ == "__main__":
             player_2="Player 2",
             metrics=metrics
         )
+    elif mode == "5":
+        human_vs_agent(
+        MCTSAgent(100),  
+        ImprovedMCTSAgent(100),  
+        player_1="MCTS Agent",
+        player_2="Improved MCTS Agent"
+       )
+    elif mode == "6":
+        human_vs_agent(
+            ImprovedMCTSAgent(25),  
+            random_move,  
+            player_1="Improved MCTS Agent",
+            player_2="Random Agent"
+        )
+    elif mode == "7":
+        human_vs_agent(
+        alpha_agent,
+        random_move,
+        player_1="AlphaZero Agent",
+        player_2="Random Agent"
+    )
     else:
         print("Invalid selection.")
         exit()
