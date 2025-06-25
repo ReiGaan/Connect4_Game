@@ -184,7 +184,8 @@ class GameMetrics:
                         xy=(bar.get_x() + bar.get_width() / 2, height),
                         xytext=(0, 3), 
                         textcoords="offset points", 
-                        ha='center', va='bottom')
+                        ha='center', va='bottom', 
+                        bbox=dict(facecolor='white', edgecolor='none', boxstyle='round,pad=0.2'))
 
         # Subplot 3: Move Accuracy
         plt.subplot(2, 2, 3)
@@ -199,7 +200,8 @@ class GameMetrics:
                         xy=(bar.get_x() + bar.get_width() / 2, height),
                         xytext=(0, 3), 
                         textcoords="offset points", 
-                        ha='center', va='bottom')
+                        ha='center', va='bottom', 
+                        bbox=dict(facecolor='white', edgecolor='none', boxstyle='round,pad=0.2'))
 
         # Subplot 4: Time per Move
         plt.subplot(2, 2, 4)
@@ -213,7 +215,8 @@ class GameMetrics:
                         xy=(bar.get_x() + bar.get_width() / 2, height),
                         xytext=(0, 3), 
                         textcoords="offset points", 
-                        ha='center', va='bottom')
+                        ha='center', va='bottom', 
+                        bbox=dict(facecolor='white', edgecolor='none', boxstyle='round,pad=0.2'))
 
         plt.tight_layout(pad=3.0)
 

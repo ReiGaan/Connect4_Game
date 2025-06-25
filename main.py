@@ -218,21 +218,24 @@ if __name__ == "__main__":
         MCTSAgent(100),  
         ImprovedMCTSAgent(100),  
         player_1="MCTS Agent",
-        player_2="Improved MCTS Agent"
+        player_2="Improved MCTS Agent",
+        metrics=metrics
        )
     elif mode == "6":
         human_vs_agent(
             ImprovedMCTSAgent(25),  
             random_move,  
             player_1="Improved MCTS Agent",
-            player_2="Random Agent"
+            player_2="Random Agent",
+            metrics=metrics
         )
     elif mode == "7":
         human_vs_agent(
         alpha_agent,
         random_move,
         player_1="AlphaZero Agent",
-        player_2="Random Agent"
+        player_2="Random Agent",
+        metrics=metrics
     )
     else:
         print("Invalid selection.")
