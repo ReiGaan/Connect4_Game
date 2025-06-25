@@ -8,7 +8,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 
 class HierachicalMCTSAgent(MCTSAgent):
-    """An improved MCTS agent for Connect4 with heuristic-guided simulation 
+    """An extended MCTS agent for Connect4 with heuristic-guided simulation 
     and MinMax integration.
     This agent extends the base MCTSAgent by several enhancements:
     - Uses MinMax search for critical moves when the simulation depth exceeds a threshold.
@@ -45,6 +45,7 @@ class HierachicalMCTSAgent(MCTSAgent):
         Args:
             board (np.ndarray): The current game board state.
             player (BoardPiece): The player for whom to find the best move.
+            root_player (BoardPiece): The player from whose perspective the MinMax evaluation is done.
         Returns:
             PlayerAction: The best action for the player based on MinMax evaluation.
         """

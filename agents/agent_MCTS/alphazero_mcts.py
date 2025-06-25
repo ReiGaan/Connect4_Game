@@ -34,7 +34,6 @@ class AlphazeroMCTSAgent(MCTSAgent):
         _, value = self.policy_value(node.state)
         # Return value from the root player’s perspective
         return {PLAYER1: value, PLAYER2: 1 - value}
-
     
     def selection_process(self, node):
         """
