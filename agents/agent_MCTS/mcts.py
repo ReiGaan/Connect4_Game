@@ -28,6 +28,7 @@ from game_utils import (
     PLAYER1,
     PLAYER2,
 )
+from metrics.metrics import GameMetrics
 from .node import Node
 
 
@@ -45,6 +46,8 @@ class MCTSAgent:
         board: np.ndarray,
         root_player: BoardPiece,
         saved_state: SavedState | None,
+        player_name: str,
+        metrics: GameMetrics | None = None,
     ) -> tuple[PlayerAction, SavedState | None]:
         """
         Perform next move of agent using the Monte Carlo Tree Search (MCTS) algorithm.
