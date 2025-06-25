@@ -5,7 +5,7 @@ from game_utils import initialize_game_state, pretty_print_board, apply_player_a
 from agents.agent_human_user import user_move
 from agents.agent_random import generate_move as random_move
 from agents.agent_MCTS.mcts import MCTSAgent
-from agents.agent_MCTS.improved_mcts import ImprovedMCTSAgent
+from agents.agent_MCTS.hierachical_mcts import HierachicalMCTSAgent
 from agents.agent_MCTS.alphazero_mcts import AlphazeroMCTSAgent
 from agents.alphazero.network import Connect4Net
 from agents.alphazero.inference import policy_value
@@ -134,8 +134,8 @@ if __name__ == "__main__":
     print("2: User vs MCTS Agent")
     print("3: MCTS Agent vs Random Agent (baseline test)")
     print("4: Human vs Human (2 players)")
-    print("5: MCTS Agent vs Improved MCTS Agent")
-    print("6: Improved MCTS Agent vs random Agent (baseline test)")
+    print("5: MCTS Agent vs hierachical MCTS Agent")
+    print("6: hierachical MCTS Agent vs random Agent (baseline test)")
     print("7: AlphaZero Agent vs Random Agent")
     mode = input("Enter number: ").strip()
 
@@ -167,15 +167,15 @@ if __name__ == "__main__":
     elif mode == "5":
         human_vs_agent(
         MCTSAgent(100),  
-        ImprovedMCTSAgent(100),  
+        HierachicalMCTSAgent(100),  
         player_1="MCTS Agent",
-        player_2="Improved MCTS Agent"
+        player_2="hierachical MCTS Agent"
        )
     elif mode == "6":
         human_vs_agent(
-            ImprovedMCTSAgent(25),  
+            HierachicalMCTSAgent(25),  
             random_move,  
-            player_1="Improved MCTS Agent",
+            player_1="hierachical MCTS Agent",
             player_2="Random Agent"
         )
     elif mode == "7":

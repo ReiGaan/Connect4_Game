@@ -7,7 +7,7 @@ import numpy as np
 from concurrent.futures import ThreadPoolExecutor
 
 
-class ImprovedMCTSAgent(MCTSAgent):
+class HierachicalMCTSAgent(MCTSAgent):
     """An improved MCTS agent for Connect4 with heuristic-guided simulation 
     and MinMax integration.
     This agent extends the base MCTSAgent by several enhancements:
@@ -38,7 +38,7 @@ class ImprovedMCTSAgent(MCTSAgent):
         self.max_depth_for_minmax = max_depth_for_minmax 
         self.max_simulation_depth = max_simulation_depth
 
-    def minmax_move(self, board: np.ndarray, player: BoardPiece) -> PlayerAction:
+    def minmax_move(self, board: np.ndarray, player: BoardPiece, root_player: BoardPiece) -> PlayerAction:
         """
         Perform a MinMax search to find the best move for the current player.
         This function returns the action that leads to the best possible state.
@@ -56,7 +56,7 @@ class ImprovedMCTSAgent(MCTSAgent):
             if check_move_status(board, PlayerAction(col)) == MoveStatus.IS_VALID:
                 temp_board = board.copy()
                 apply_player_action(temp_board, PlayerAction(col), player)
-                score = self.minmax(temp_board, get_opponent(player), depth=3)
+                score = self.minmax(temp_board, get_opponent(player), root_player=root_player, depth=3, alpha=-float('inf'), beta=float('inf'))
                 if score > best_score:
                     best_score = score
                     best_move = PlayerAction(col)
@@ -64,7 +64,7 @@ class ImprovedMCTSAgent(MCTSAgent):
 
         return best_move
 
-    def minmax(self, board: np.ndarray, player: BoardPiece, depth: int) -> int:
+    def minmax(self, board: np.ndarray, player: BoardPiece, root_player: BoardPiece, depth: int, alpha: float, beta: float) -> int:
         """
         Perform a MinMax search with a specified depth.
         This function recursively evaluates all possible moves for the given player.
@@ -72,36 +72,43 @@ class ImprovedMCTSAgent(MCTSAgent):
             board (np.ndarray): The current game board state.               
             player (BoardPiece): The player for whom to evaluate moves.
             depth (int): The depth to search in the tree.
+            alpha (float): The alpha value for alpha-beta pruning.
+            beta (float): The beta value for alpha-beta pruning.
         Returns:
             int: The score for the player at the current board state.
         """
         terminal, result = Node(board, player).check_terminal_state()
         if terminal:
-            return result[player]  # Return the score for the player
+            return result[root_player]  # Evaluate from root player's perspective
 
         if depth == 0:
-            return 0  # No further search, return neutral score
+            return 0  # Neutral evaluation at depth limit
 
-        best_score = -float('inf') if player == PLAYER1 else float('inf')
-
-        for col in range(board.shape[1]):
-            if check_move_status(board, PlayerAction(col)) == MoveStatus.IS_VALID:
-                temp_board = board.copy()
-                apply_player_action(temp_board, PlayerAction(col), player)
-                score = self.minmax(temp_board, get_opponent(player), depth - 1)
-
-                if player == PLAYER1:
+        if player == root_player:
+            best_score = -float('inf')
+            for col in range(board.shape[1]):
+                if check_move_status(board, PlayerAction(col)) == MoveStatus.IS_VALID:
+                    temp_board = board.copy()
+                    apply_player_action(temp_board, PlayerAction(col), player)
+                    score = self.minmax(temp_board, get_opponent(player), root_player, depth - 1, alpha, beta)
                     best_score = max(best_score, score)
                     alpha = max(alpha, best_score)
-                else:
+                    if beta <= alpha:
+                        break
+            return best_score
+        else:
+            best_score = float('inf')
+            for col in range(board.shape[1]):
+                if check_move_status(board, PlayerAction(col)) == MoveStatus.IS_VALID:
+                    temp_board = board.copy()
+                    apply_player_action(temp_board, PlayerAction(col), player)
+                    score = self.minmax(temp_board, get_opponent(player), root_player, depth - 1, alpha, beta)
                     best_score = min(best_score, score)
                     beta = min(beta, best_score)
+                    if beta <= alpha:
+                        break
+            return best_score
 
-                if beta <= alpha:
-                    break
-
-        return best_score
-    
     def expand_to_next_children(self,
         player: BoardPiece, node: Node
     ) -> tuple[PlayerAction, np.ndarray]:
@@ -186,6 +193,7 @@ class ImprovedMCTSAgent(MCTSAgent):
         Returns:
             dict[BoardPiece, int]: The result of the simulation for each player.
         """
+        root_player = player
         node_state = node.state.copy()
         depth = 0 
         self.max_simulation_depth = 20
@@ -209,7 +217,7 @@ class ImprovedMCTSAgent(MCTSAgent):
 
             if depth >= self.max_depth_for_minmax:
             # Use MinMax for critical moves when the threshold is reached
-                action = self.minmax_move(node_state, player)
+                action = self.minmax_move(node_state, player, root_player=root_player)
             else:
 
                 # Prefer moves that create three-in-a-row, then two-in-a-row, then center, then random
@@ -243,22 +251,6 @@ class ImprovedMCTSAgent(MCTSAgent):
         # If the loop ends without reaching a terminal state or max depth
         print(f"Maximum simulation depth reached without terminal state.")
         return {PLAYER1: 0, PLAYER2: 0}
-
-    ## Need to be checked, currently not used as not faster than single-threaded version
-    # def simulate(self, node: Node, player: BoardPiece, simulations: int = 10) -> dict[BoardPiece, int]:
-    #     """Simulate multiple random plays in parallel to speed up the process."""
-    #     with ThreadPoolExecutor() as executor:
-    #         future_to_simulation = {
-    #             executor.submit(self.simulate_parallel, node, player): i for i in range(simulations)
-    #         }
-    #         results = [future.result() for future in future_to_simulation]
-        
-    #     # Combine the results from multiple simulations
-    #     combined_result = {PLAYER1: 0, PLAYER2: 0}
-    #     for result in results:
-    #         for player, score in result.items():
-    #             combined_result[player] += score
-    #     return combined_result
 
     def __call__(self, board, player, saved_state, *args):
         return self.mcts_move(board, player, saved_state, *args)
