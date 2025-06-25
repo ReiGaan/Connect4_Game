@@ -5,7 +5,7 @@ from game_utils import (
 from .node import Node
 import numpy as np
 from concurrent.futures import ThreadPoolExecutor
-
+import cProfile
 
 class HierachicalMCTSAgent(MCTSAgent):
     """An extended MCTS agent for Connect4 with heuristic-guided simulation 
@@ -109,7 +109,7 @@ class HierachicalMCTSAgent(MCTSAgent):
                     if beta <= alpha:
                         break
             return best_score
-
+      
     def expand_to_next_children(self,
         player: BoardPiece, node: Node
     ) -> tuple[PlayerAction, np.ndarray]:
@@ -165,14 +165,15 @@ class HierachicalMCTSAgent(MCTSAgent):
         rows, cols = board.shape
         # Horizontal
         for r in range(rows):
-            for c in range(cols - n + 1):
-                if np.all(board[r, c:c+n] == player):
-                    count += 1
+            row = board[r, :]
+            matches = np.convolve(row == player, np.ones(n, dtype=int), 'valid')
+            count += np.sum(matches == n)
         # Vertical
         for c in range(cols):
-            for r in range(rows - n + 1):
-                if np.all(board[r:r+n, c] == player):
-                    count += 1
+            col_arr = board[:, c]
+            matches = np.convolve(col_arr == player, np.ones(n, dtype=int), 'valid')
+            count += np.sum(matches == n)
+
         # Diagonal /
         for r in range(n-1, rows):
             for c in range(cols - n + 1):
@@ -195,7 +196,7 @@ class HierachicalMCTSAgent(MCTSAgent):
             dict[BoardPiece, int]: The result of the simulation for each player.
         """
         root_player = player
-        node_state = node.state.copy()
+        node_state = node.state
         depth = 0 
         self.max_simulation_depth = 20
         while depth < self.max_simulation_depth:
@@ -220,7 +221,6 @@ class HierachicalMCTSAgent(MCTSAgent):
             # Use MinMax for critical moves when the threshold is reached
                 action = self.minmax_move(node_state, player, root_player=root_player)
             else:
-
                 # Prefer moves that create three-in-a-row, then two-in-a-row, then center, then random
                 best_score = -1
                 best_moves = []

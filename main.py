@@ -167,7 +167,7 @@ if __name__ == "__main__":
     elif mode == "5":
         human_vs_agent(
         MCTSAgent(100),  
-        HierachicalMCTSAgent(100),  
+        HierachicalMCTSAgent(50),  
         player_1="MCTS Agent",
         player_2="hierachical MCTS Agent"
        )
