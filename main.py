@@ -179,8 +179,8 @@ if __name__ == "__main__":
     print("2: User vs MCTS Agent")
     print("3: MCTS Agent vs Random Agent (performance test)")
     print("4: Human vs Human (2 players)")
-    print("5: MCTS Agent vs hierachical MCTS Agent")
-    print("6: hierachical MCTS Agent vs random Agent (baseline test)")
+    print("5: MCTS Agent vs Hierachical MCTS Agent")
+    print("6: Hierachical MCTS Agent vs random Agent (baseline test)")
     print("7: AlphaZero Agent vs Random Agent")
     mode = input("Enter number: ").strip()
     metrics = GameMetrics()
@@ -221,14 +221,14 @@ if __name__ == "__main__":
             MCTSAgent(100),  
             HierachicalMCTSAgent(iterationnumber=50),  
             player_1="MCTS Agent",
-            player_2="hierachical MCTS Agent",
+            player_2="Hierachical MCTS Agent",
             metrics=metrics
             )
     elif mode == "6":
         human_vs_agent(
             HierachicalMCTSAgent(25),  
             random_move,  
-            player_1="hierachical MCTS Agent",
+            player_1="Hierachical MCTS Agent",
             player_2="Random Agent",
             metrics=metrics
         )

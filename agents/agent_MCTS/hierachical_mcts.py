@@ -61,7 +61,9 @@ class HierachicalMCTSAgent(MCTSAgent):
                 if score > best_score:
                     best_score = score
                     best_move = PlayerAction(col)
-                    
+        if best_move is None:
+            best_move = np.random.choice([PlayerAction(col) for col in range(board.shape[1]) 
+                                  if check_move_status(board, PlayerAction(col)) == MoveStatus.IS_VALID])
 
         return best_move
 
@@ -131,9 +133,10 @@ class HierachicalMCTSAgent(MCTSAgent):
         opponent = get_opponent(player)
         candidate_moves = []
 
+        # Generate all candidate moves
         for action in node.untried_actions:
             next_state = node.state.copy()
-            apply_player_action(next_state, action, player)
+            apply_player_action(next_state, int(action), player)
             candidate_moves.append((action, next_state))
 
         # 1. Check for immediate win
@@ -146,30 +149,44 @@ class HierachicalMCTSAgent(MCTSAgent):
             for opp_action in range(next_state.shape[1]):
                 if check_move_status(next_state, PlayerAction(opp_action)) == MoveStatus.IS_VALID:
                     opp_state = next_state.copy()
-                    apply_player_action(opp_state, PlayerAction(opp_action), opponent)
+                    apply_player_action(opp_state, opp_action, opponent)
                     if Node(opp_state, opponent).check_terminal_state()[0]:
                         return action, next_state
 
-        #Otherwise still, pick randomly as before
+        # 3. Score remaining candidate moves
         best_score = -float("inf")
-        best_action = []
-        for action in node.untried_actions:
+        best_actions = []
+
+        for action, _ in candidate_moves:
             temp_state = node.state.copy()
-            apply_player_action(temp_state, action, player)
-            score = (
-                9 * self.count_n_in_a_row(temp_state, player, 3) +
-                3 * self.count_n_in_a_row(temp_state, player, 2)
-            )
-            if action == temp_state.shape[1] // 2: 
+            apply_player_action(temp_state, int(action), player)
+            try:
+                score = (
+                    9 * self.count_n_in_a_row(temp_state, player, 3) +
+                    3 * self.count_n_in_a_row(temp_state, player, 2)
+                )
+            except Exception as e:
+                print(f"⚠️ Scoring failed on action {action}: {e}")
+                score = 0
+            if int(action) == temp_state.shape[1] // 2:  # favor center column
                 score += 1
             if score > best_score:
                 best_score = score
-                best_action = [action]
+                best_actions = [action]
             elif score == best_score:
-                best_action.append(action)
-        action = np.random.choice(best_action)
+                best_actions.append(action)
+
+        # Fallback in case scoring failed
+        if not best_actions or not isinstance(best_actions[0], (int, np.integer)):
+            print("⚠️ No valid best_actions found, using fallback.")
+            fallback_action = np.random.choice(node.untried_actions)
+            next_state = node.state.copy()
+            apply_player_action(next_state, int(fallback_action), player)
+            return fallback_action, next_state
+        # Choose best among top-scoring actions
+        action = np.random.choice(best_actions)
         next_state = node.state.copy()
-        apply_player_action(next_state, action, player)
+        apply_player_action(next_state, int(action), player)
         return action, next_state
 
     def count_n_in_a_row(self, board, player, n) -> int:
@@ -219,7 +236,7 @@ class HierachicalMCTSAgent(MCTSAgent):
         node_state = node.state.copy()
         depth = 0 
         self.max_simulation_depth = 20
-        while depth < self.max_simulation_depth:
+        while depth <= self.max_simulation_depth:
             valid_moves = [
             col
             for col in range(node_state.shape[1])
