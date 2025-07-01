@@ -22,13 +22,15 @@ def test_get_valid_moves_edge_cases():
     then creates a Node with this board and asserts that only three valid moves remain.
 
     """
-    from game_utils import PLAYER1
+    from game_utils import PLAYER1,PlayerAction
     from agents.agent_MCTS.node import Node
 
     board = np.zeros((6, 7), dtype=int)
     board[0:5, :4] = PLAYER1
+    print(board)
     node = Node(board, PLAYER1)
-    assert len(node.get_valid_moves()) == 3
+    expected_moves = [PlayerAction(4), PlayerAction(5), PlayerAction(6)]
+    assert set(node.get_valid_moves()) == set(expected_moves)
 
 def test_check_terminal_state_empty_board():
     """
@@ -78,12 +80,11 @@ def test_is_fully_expanded():
     state = initialize_game_state()
     node = Node(state=state, player=PLAYER1)
 
-    for action in node.untried_actions.copy():
+    # Manually create children with dummy next states
+    for action in list(node.untried_actions):
         next_state = np.copy(node.state)
-        for row in reversed(range(next_state.shape[0])):
-            if next_state[row, action] == 0:
-                next_state[row, action] = PLAYER1
-                break
+        # For test, just mark a cell in first row as next state differentiation
+        next_state[0, action] = PLAYER1
         node.expand(PlayerAction(action), next_state, PLAYER2)
 
     assert node.is_fully_expanded(), f"Node should be fully expanded, but untried_actions remain: {node.untried_actions}"
