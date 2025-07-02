@@ -43,11 +43,6 @@ def test_pretty_print_empty_board():
         "|0 1 2 3 4 5 6 |"
     )
 
-    print("Expected Output:")
-    print(expected_output)
-    print("Actual Output:")
-    print(board_str)
-
     assert board_str == expected_output
 
 
@@ -185,7 +180,7 @@ def test_string_to_board_given_board():
     print("Actual Output:")
     print(board_str)
 
-    assert board_str.all() == expected_output.all()
+    assert np.array_equal(board_str, expected_output)
 
 
 def test_pretty_print_and_parse_back():
@@ -488,9 +483,9 @@ def test_check_move_status_Full():
     assert check_move_status(board, PlayerAction(2)) == MoveStatus.FULL_COLUMN
 
 
-def test_check_end_state_draw_and_playing():
+def test_check_end_state_win():
     """
-    Checks end_state of game.
+    Checks end_state of game - Win.
     """
     from game_utils import (
         BOARD_SHAPE,
@@ -505,9 +500,37 @@ def test_check_end_state_draw_and_playing():
     board_win = np.full(BOARD_SHAPE, NO_PLAYER, dtype=BoardPiece)
     board_win[5, 1:5] = PLAYER1
     assert (check_end_state(board_win, PLAYER1)) == GameState.IS_WIN
+
+def test_check_end_state_loose():
+    """
+    Checks end_state of game - Win.
+    """
+    from game_utils import (
+        BOARD_SHAPE,
+        BoardPiece,
+        check_end_state,
+        GameState,
+        PLAYER1,
+        PLAYER2,
+        NO_PLAYER,
+    )
     board_loose = np.full(BOARD_SHAPE, NO_PLAYER, dtype=BoardPiece)
     board_loose[5, 1:5] = PLAYER2
-    assert (check_end_state(board_loose, PLAYER1)) == GameState.IS_LOST
+    assert (check_end_state(board_loose, PLAYER1)) == GameState.STILL_PLAYING #as no separate Lost
+
+def test_check_end_state_draw():
+    """
+    Checks end_state of game - Draw.
+    """
+    from game_utils import (
+        BOARD_SHAPE,
+        BoardPiece,
+        check_end_state,
+        GameState,
+        PLAYER1,
+        PLAYER2,
+        NO_PLAYER,
+    )
     board_full = np.array(
         [
             [PLAYER2, PLAYER1, PLAYER2, PLAYER2, PLAYER2, PLAYER1, PLAYER2],
@@ -519,6 +542,30 @@ def test_check_end_state_draw_and_playing():
         ]
     )
     assert (check_end_state(board_full, PLAYER2)) == GameState.IS_DRAW and (check_end_state(board_full, PLAYER1)) == GameState.IS_DRAW
+
+def test_check_end_state_playing():
+    """
+    Checks end_state of game - Playing.
+    """
+    from game_utils import (
+        BOARD_SHAPE,
+        BoardPiece,
+        check_end_state,
+        GameState,
+        PLAYER1,
+        PLAYER2,
+        NO_PLAYER,
+    )
+    board_full = np.array(
+        [
+            [PLAYER2, PLAYER1, PLAYER2, PLAYER2, PLAYER2, PLAYER1, PLAYER2],
+            [PLAYER1, PLAYER2, PLAYER2, PLAYER1, PLAYER1, PLAYER2, PLAYER1],
+            [PLAYER2, PLAYER1, PLAYER1, PLAYER2, PLAYER2, PLAYER1, PLAYER2],
+            [PLAYER1, PLAYER2, PLAYER1, PLAYER1, PLAYER1, PLAYER2, PLAYER2],
+            [PLAYER1, PLAYER2, PLAYER1, PLAYER2, PLAYER2, PLAYER1, PLAYER1],
+            [PLAYER2, PLAYER1, PLAYER2, PLAYER1, PLAYER1, PLAYER1, PLAYER2],
+        ]
+    )
     board_full[0, :] = NO_PLAYER
     assert (check_end_state(board_full, PLAYER2)) == GameState.STILL_PLAYING
 

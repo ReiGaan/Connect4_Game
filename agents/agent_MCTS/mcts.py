@@ -27,6 +27,7 @@ from game_utils import (
     get_opponent,
     PLAYER1,
     PLAYER2,
+    check_end_state,
 )
 from metrics.metrics import GameMetrics
 from .node import Node
@@ -161,9 +162,12 @@ class MCTSAgent:
             action = np.random.choice(valid_moves)
             apply_player_action(node_state, PlayerAction(action), player)
 
-            terminal, result = Node(node_state, player).check_terminal_state()
-            if terminal:
-                return result
+            state = check_end_state(node_state, player)
+            if state.name == "IS_WIN":
+               return {player: 1, get_opponent(player): -1}
+            elif state.name == "IS_DRAW":
+                return {PLAYER1: 0, PLAYER2: 0}
+
 
             player = get_opponent(player)
 
