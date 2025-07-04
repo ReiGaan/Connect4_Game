@@ -22,7 +22,8 @@ def human_vs_agent(
     args_2: tuple = (),
     init_1: Callable = lambda board, player: None,
     init_2: Callable = lambda board, player: None,
-    metrics: GameMetrics = None
+    metrics: GameMetrics = None,
+    verbose: bool = True  # Added verbose parameter to control output
 ) -> tuple:
     """Run a game between two agents with integrated metrics tracking"""
     if metrics is None:
@@ -55,17 +56,19 @@ def human_vs_agent(
                 players, player_names, gen_moves, gen_args,
             ):
                 t0 = time.time()
-                print(pretty_print_board(board))
-                print(
-                    f'{player_name} you are playing with {PLAYER1_PRINT if player == PLAYER1 else PLAYER2_PRINT}'
-                )
+                if verbose:  # Only show board if verbose mode
+                    print(pretty_print_board(board))
+                    print(
+                        f'{player_name} you are playing with {PLAYER1_PRINT if player == PLAYER1 else PLAYER2_PRINT}'
+                    )
 
                 action, saved_state[player] = gen_move(
                     board.copy(),  
                     player, saved_state[player], player_name, metrics, *args
                 )
                 elapsed = time.time() - t0
-                print(f'Move time: {elapsed:.3f}s')
+                if verbose:  # Only show move time if verbose
+                    print(f'Move time: {elapsed:.3f}s')
                 
                 # Record move metrics
                 move_status = check_move_status(board, action)
@@ -73,8 +76,9 @@ def human_vs_agent(
                 metrics.record_move(player_name, elapsed, is_legal)
                 
                 if move_status != MoveStatus.IS_VALID:
-                    print(f'Move {action} is invalid: {move_status.value}')
-                    print(f'{player_name} lost by making an illegal move.')
+                    if verbose:  # Only show error if verbose
+                        print(f'Move {action} is invalid: {move_status.value}')
+                        print(f'{player_name} lost by making an illegal move.')
                     
                     # Record results for illegal move
                     metrics.record_result(player_name, 'loss')
@@ -89,9 +93,11 @@ def human_vs_agent(
                 end_state = check_end_state(board, player)
 
                 if end_state != GameState.STILL_PLAYING:
-                    print(pretty_print_board(board))
+                    if verbose:  # Only show final board if verbose
+                        print(pretty_print_board(board))
                     if end_state == GameState.IS_DRAW:
-                        print('Game ended in draw')
+                        if verbose:  # Only show result if verbose
+                            print('Game ended in draw')
                         # Record draw for both players
                         for name in player_name_map.values():
                             metrics.record_result(name, 'draw')
@@ -100,7 +106,8 @@ def human_vs_agent(
                         winner_name = player_name
                         loser = PLAYER2 if player == PLAYER1 else PLAYER1
                         loser_name = player_name_map[loser]
-                        print(f'{winner_name} won playing {PLAYER1_PRINT if player == PLAYER1 else PLAYER2_PRINT}')
+                        if verbose:  # Only show result if verbose
+                            print(f'{winner_name} won playing {PLAYER1_PRINT if player == PLAYER1 else PLAYER2_PRINT}')
                         
                         # Record win/loss results
                         metrics.record_result(winner_name, 'win')
@@ -122,14 +129,17 @@ def run_mcts_vs_random(num_games: int = 100):
     draws = 0
     errors = 0
     total = []
-    for _ in range(num_games):
-        print(f"Game {_ + 1}/{num_games}")
+    for i in range(num_games):
+        print(f"Game {i + 1}/{num_games}")
        
+        # Show board for first game, then just progress
+        verbose = (i == 0)
         results = human_vs_agent(generate_move_1=MCTSAgent(100), 
                                 generate_move_2=random_move, 
                                 player_1="MCTS Agent", 
                                 player_2="Random Agent",
-                                metrics=total_metrics)
+                                metrics=total_metrics,
+                                verbose=verbose)
         total.append(results)
         if results[0] == PLAYER1_PRINT:
             mcts_wins_started += 1
@@ -161,6 +171,92 @@ def run_mcts_vs_random(num_games: int = 100):
     # Print comprehensive metrics
     print("\nPerformance Metrics:")
     print(total_metrics)
+    return total_metrics
+
+def run_alphazero_vs_random(num_games: int, alpha_iterations=100):
+    """Run multiple games between AlphaZero and Random agents"""
+    total_metrics = GameMetrics()
+    
+    # Initialize agent
+    model = Connect4Net()
+    checkpoint = torch.load("checkpoints/iteration_4.pt", map_location="cpu")
+    model.load_state_dict(checkpoint['model_state_dict'])
+    model.eval()
+    
+    alpha_agent = AlphazeroMCTSAgent(
+        policy_value=lambda state: policy_value(state, model),
+        iterationnumber=alpha_iterations
+    )
+    
+    # Track results
+    alpha_wins_started = 0
+    alpha_wins_not_started = 0
+    random_wins_started = 0
+    random_wins_not_started = 0
+    draws = 0
+    errors = 0
+    
+    for game_idx in range(num_games):
+        print(f"\nGame {game_idx+1}/{num_games}")
+        
+        # Show board for first game only
+        verbose = (game_idx == 0)
+        
+        # Alternate who starts
+        if game_idx % 2 == 0:
+            # AlphaZero starts as Player 1
+            player1 = "AlphaZero Agent"
+            player2 = "Random Agent"
+            agent1 = alpha_agent
+            agent2 = random_move
+        else:
+            # Random starts as Player 1
+            player1 = "Random Agent"
+            player2 = "AlphaZero Agent"
+            agent1 = random_move
+            agent2 = alpha_agent
+        
+        # Run the game
+        results, _ = human_vs_agent(
+            agent1,
+            agent2,
+            player_1=player1,
+            player_2=player2,
+            metrics=total_metrics,
+            verbose=verbose
+        )
+        
+        # Track results based on who started
+        if game_idx % 2 == 0:  # AlphaZero started
+            if results[0] == PLAYER1_PRINT:
+                alpha_wins_started += 1
+            elif results[0] == PLAYER2_PRINT:
+                random_wins_not_started += 1
+            elif results[0] == 'Draw':
+                draws += 1
+            elif results[0] == 'Error':
+                errors += 1
+        else:  # Random started
+            if results[0] == PLAYER1_PRINT:
+                random_wins_started += 1
+            elif results[0] == PLAYER2_PRINT:
+                alpha_wins_not_started += 1
+            elif results[0] == 'Draw':
+                draws += 1
+            elif results[0] == 'Error':
+                errors += 1
+    
+    # Print summary
+    print(f"\nResults after {num_games} games:")
+    print(f"AlphaZero wins when starting: {alpha_wins_started}")
+    print(f"AlphaZero wins when not starting: {alpha_wins_not_started}")
+    print(f"Total AlphaZero wins: {alpha_wins_started + alpha_wins_not_started}")
+    print(f"Random wins when starting: {random_wins_started}")
+    print(f"Random wins when not starting: {random_wins_not_started}")
+    print(f"Total Random wins: {random_wins_started + random_wins_not_started}")
+    print(f"Draws: {draws}")
+    print(f"Errors: {errors}")
+    
     return total_metrics
 
 model = Connect4Net()
@@ -216,31 +312,30 @@ if __name__ == "__main__":
         )
     elif mode == "5":
         num_games = int(input("How many games? "))
-        for _ in range(num_games):
-            print(f"Game {_ + 1}/{num_games}")
+        for i in range(num_games):
+            print(f"Game {i + 1}/{num_games}")
+            verbose = (i == 0)  # Show board for first game only
             human_vs_agent(
-            MCTSAgent(100),  
-            HierachicalMCTSAgent(iterationnumber=50),  
-            player_1="MCTS Agent",
-            player_2="Hierachical MCTS Agent",
-            metrics=metrics
+                MCTSAgent(100),  
+                HierachicalMCTSAgent(iterationnumber=50),  
+                player_1="MCTS Agent",
+                player_2="Hierachical MCTS Agent",
+                metrics=metrics,
+                verbose=verbose
             )
     elif mode == "6":
+        # Show full game for this single match
         human_vs_agent(
             HierachicalMCTSAgent(25),  
             random_move,  
             player_1="Hierachical MCTS Agent",
             player_2="Random Agent",
-            metrics=metrics
+            metrics=metrics,
+            verbose=True
         )
     elif mode == "7":
-        human_vs_agent(
-        alpha_agent,
-        random_move,
-        player_1="AlphaZero Agent",
-        player_2="Random Agent",
-        metrics=metrics
-    )
+        num_games = int(input("How many games to play? "))
+        metrics = run_alphazero_vs_random(num_games)
     else:
         print("Invalid selection.")
         exit()
@@ -253,4 +348,3 @@ if __name__ == "__main__":
     plot_choice = input("\nWould you like to see performance visualizations? (y/n): ").strip().lower()
     if plot_choice == 'y':
         metrics.plot_results()
-    

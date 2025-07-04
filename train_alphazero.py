@@ -30,6 +30,18 @@ class ReplayBuffer:
     def __len__(self):
         return len(self.buffer)
 
+    def save(self, path):
+        """Save buffer to file"""
+        torch.save(list(self.buffer), path)
+    
+    @staticmethod
+    def load(path, capacity=10000):
+        """Load buffer from file"""
+        buffer = ReplayBuffer(capacity)
+        if os.path.exists(path):
+            buffer.buffer = deque(torch.load(path), maxlen=capacity)
+        return buffer
+
 class BoardDataset(Dataset):
     """PyTorch Dataset for training"""
     def __init__(self, data):
@@ -136,7 +148,7 @@ def self_play(model, device, mcts_iterations=100, temperature=1.0):
     return training_data
 
 # =============================
-# 3. Training Loop
+# 3. Training Loop with Checkpoint Resuming
 # =============================
 def train_alphazero(
     num_iterations=100, 
@@ -146,20 +158,45 @@ def train_alphazero(
     mcts_iterations=100,
     learning_rate=0.001,
     buffer_size=10000,
-    device='cpu'
+    device='cpu',
+    checkpoint_dir="checkpoints",
+    resume_checkpoint=None
 ):
-    """Main training loop for AlphaZero"""
-    # Initialize model
+    """Main training loop for AlphaZero with checkpoint resuming"""
+    # Create directory for checkpoints
+    os.makedirs(checkpoint_dir, exist_ok=True)
+    
+    # Initialize model, optimizer, and replay buffer
     model = Connect4Net().to(device)
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     loss_fn = CustomLoss()
     replay_buffer = ReplayBuffer(capacity=buffer_size)
+    start_iteration = 0
     
-    # Create directory for checkpoints
-    os.makedirs("checkpoints", exist_ok=True)
+    # Resume from checkpoint if specified
+    if resume_checkpoint:
+        print(f"Resuming training from checkpoint: {resume_checkpoint}")
+        checkpoint_path = os.path.join(checkpoint_dir, resume_checkpoint)
+        if os.path.exists(checkpoint_path):
+            checkpoint = torch.load(checkpoint_path, map_location=device)
+            
+            # Load model and optimizer states
+            model.load_state_dict(checkpoint['model_state_dict'])
+            optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+            
+            # Load iteration counter
+            start_iteration = checkpoint['iteration'] + 1
+            
+            # Load replay buffer if available
+            buffer_path = os.path.join(checkpoint_dir, f"buffer_{resume_checkpoint.split('_')[-1]}")
+            if os.path.exists(buffer_path):
+                replay_buffer = ReplayBuffer.load(buffer_path, capacity=buffer_size)
+                print(f"Loaded replay buffer with {len(replay_buffer)} experiences")
+        else:
+            print(f"Warning: Checkpoint {checkpoint_path} not found. Starting from scratch.")
     
     # Training loop
-    for iteration in range(num_iterations):
+    for iteration in range(start_iteration, num_iterations):
         print(f"\n=== Iteration {iteration+1}/{num_iterations} ===")
         start_time = time.time()
         
@@ -170,14 +207,15 @@ def train_alphazero(
             for experience in game_data:
                 replay_buffer.add(experience)
             
-            if (game_idx + 1) % 10 == 0:
+            if (game_idx + 1) % 1 == 0:
                 print(f"  Completed {game_idx+1}/{num_self_play_games} games")
         
         # Train on collected data
         print(f"Training on {len(replay_buffer)} experiences...")
         if len(replay_buffer) > batch_size:
             # Sample training data
-            train_data = replay_buffer.sample(min(len(replay_buffer), 2048))
+            sample_size = min(len(replay_buffer), 2048)
+            train_data = replay_buffer.sample(sample_size)
             train_dataset = BoardDataset(train_data)
             train_loader = DataLoader(
                 train_dataset, batch_size=batch_size, shuffle=True
@@ -208,13 +246,20 @@ def train_alphazero(
                 print(f"  Epoch {epoch+1}/{num_epochs} - Loss: {epoch_loss/len(train_loader):.4f}")
         
         # Save checkpoint
-        checkpoint_path = f"checkpoints/iteration_{iteration+1}.pt"
+        checkpoint_path = os.path.join(checkpoint_dir, f"iteration_{iteration+1}.pt")
+        buffer_path = os.path.join(checkpoint_dir, f"buffer_{iteration+1}.pt")
+        
         torch.save({
             'model_state_dict': model.state_dict(),
             'optimizer_state_dict': optimizer.state_dict(),
             'iteration': iteration,
         }, checkpoint_path)
+        
+        # Save replay buffer
+        replay_buffer.save(buffer_path)
+        
         print(f"Saved checkpoint to {checkpoint_path}")
+        print(f"Saved replay buffer to {buffer_path}")
         
         # Print iteration stats
         iteration_time = time.time() - start_time
@@ -239,12 +284,25 @@ if __name__ == "__main__":
         'mcts_iterations': 100,
         'learning_rate': 0.001,
         'buffer_size': 10000,
-        'device': device
+        'device': device,
+        'checkpoint_dir': "checkpoints",
+        'resume_checkpoint': "iteration_3.pt"  # "iteration_X.pt" or "None"
     }
+    
+    # Check for command line arguments to resume training
+    import argparse
+    parser = argparse.ArgumentParser(description='AlphaZero Training')
+    parser.add_argument('--resume', type=str, default=None,
+                        help='Checkpoint to resume training from (e.g., iteration_10.pt)')
+    args = parser.parse_args()
+    
+    if args.resume:
+        config['resume_checkpoint'] = args.resume
     
     # Start training
     trained_model = train_alphazero(**config)
     
     # Save final model
-    torch.save(trained_model.state_dict(), "alphazero_final_model.pt")
-    print("Training complete! Saved final model as alphazero_final_model.pt")
+    final_model_path = "alphazero_final_model.pt"
+    torch.save(trained_model.state_dict(), final_model_path)
+    print(f"Training complete! Saved final model as {final_model_path}")
