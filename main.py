@@ -164,7 +164,8 @@ def run_mcts_vs_random(num_games: int = 100):
     return total_metrics
 
 model = Connect4Net()
-model.load_state_dict(torch.load("agents/alphazero/model.pt", map_location="cpu"))
+checkpoint = torch.load("checkpoints/iteration_1.pt", map_location="cpu")
+model.load_state_dict(checkpoint['model_state_dict'])
 model.eval()
 
 # Wrap into policy_value_fn

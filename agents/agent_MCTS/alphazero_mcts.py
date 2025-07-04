@@ -31,6 +31,9 @@ class AlphazeroMCTSAgent(MCTSAgent):
         self.policy_value = policy_value
 
     def simulate(self, node: Node, player: BoardPiece):
+        if node.is_terminal:
+            return node.result
+        
         _, value = self.policy_value(node.state)
         # Return value from the root player’s perspective
         return {PLAYER1: value, PLAYER2: 1 - value}
