@@ -23,19 +23,24 @@ class GameMetrics:
 
     def __init__(self):
         self.agents = {}
+        self.history = {}  
 
     def add_agent(self, agent_name: str):
         """Initializes metrics for a new agent."""
         if agent_name not in self.agents:
             self.agents[agent_name] = {
-                'wins': 0,
-                'losses': 0,
-                'draws': 0,
-                'total_time': 0.0,
-                'legal_moves': 0,
-                'illegal_moves': 0
+            'wins': 0,
+            'losses': 0,
+            'draws': 0,
+            'total_time': 0.0,
+            'legal_moves': 0,
+            'illegal_moves': 0
             }
-
+            self.history[agent_name] = {
+            'results': [],
+            'move_times': [],
+            'move_legality': []
+            }
     def record_move(self, agent_name: str, time_taken: float, is_legal: bool = True):
         """
         Records a move for an agent including its duration and legality.
@@ -53,6 +58,9 @@ class GameMetrics:
         else:
             self.agents[agent_name]['illegal_moves'] += 1
 
+        self.history[agent_name]['move_times'].append(time_taken)
+        self.history[agent_name]['move_legality'].append(is_legal)
+
     def record_result(self, agent_name: str, result: str):
         """
         Records the outcome of a game for an agent.
@@ -69,6 +77,8 @@ class GameMetrics:
             self.agents[agent_name]['losses'] += 1
         elif result == 'draw':
             self.agents[agent_name]['draws'] += 1
+
+        self.history[agent_name]['results'].append(result)  
 
     def win_rate(self, agent_name: str) -> float:
         """
@@ -117,6 +127,81 @@ class GameMetrics:
             return 0.0
         total_moves = agent['legal_moves'] + agent.get('illegal_moves', 0)
         return agent['legal_moves'] / total_moves if total_moves else 0.0
+
+    def plot_move_duration_distribution(self, agent_name: str):
+        """
+        Plots histogram of move durations for a given agent.
+
+        Args:
+            agent_name: Identifier for the agent.
+        """
+        import matplotlib.pyplot as plt
+
+        if agent_name not in self.history:
+            print(f"No history for agent '{agent_name}'")
+            return
+
+        move_times = self.history[agent_name]['move_times']
+        if not move_times:
+            print(f"No move times recorded for agent '{agent_name}'")
+            return
+
+        plt.figure(figsize=(8, 5))
+        plt.hist(move_times, bins=20, color='skyblue', edgecolor='black')
+        plt.title(f'Move Duration Distribution: {agent_name}')
+        plt.xlabel('Time per Move (s)')
+        plt.ylabel('Frequency')
+        plt.grid(True)
+        plt.tight_layout()
+        plt.show()
+
+    def plot_performance_radar(self):
+        """
+        Plots a radar chart comparing agent performance on:
+        - Win Rate
+        - Move Accuracy
+        - Inverse Time per Move
+        """
+        import matplotlib.pyplot as plt
+        import numpy as np
+
+        if not self.agents:
+            print("No agents to compare.")
+            return
+
+        labels = ['Win Rate', 'Move Accuracy', 'Speed (1 / Time per Move)']
+        num_vars = len(labels)
+        angles = np.linspace(0, 2 * np.pi, num_vars, endpoint=False).tolist()
+        angles += angles[:1]  # close the loop
+
+        plt.figure(figsize=(8, 8))
+        ax = plt.subplot(111, polar=True)
+
+        for agent in self.agents:
+            win_rate = self.win_rate(agent)
+            accuracy = self.move_accuracy(agent)
+            time = self.time_per_move(agent)
+            speed = 1.0 / time if time > 0 else 0.0
+
+            # Normalize to 0-1 scale (for fair comparison)
+            values = [win_rate, accuracy, speed]
+            max_vals = [1.0, 1.0, max(1.0, speed)]  # prevent divide-by-zero
+            normalized = [v / m for v, m in zip(values, max_vals)]
+            normalized += normalized[:1]
+
+            ax.plot(angles, normalized, label=agent)
+            ax.fill(angles, normalized, alpha=0.1)
+
+        ax.set_title("Agent Performance Comparison (Radar Chart)", y=1.08)
+        ax.set_xticks(angles[:-1])
+        ax.set_xticklabels(labels)
+        ax.set_yticklabels([])
+        ax.legend(loc='upper right', bbox_to_anchor=(1.3, 1.1))
+        plt.tight_layout()
+        plt.show()
+
+    
+
 
     def plot_results(self, save_path: str = None, show: bool = True):
         """
