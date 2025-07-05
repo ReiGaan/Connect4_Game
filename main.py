@@ -253,7 +253,6 @@ if __name__ == "__main__":
     if plot_choice == 'y':
         metrics.plot_results()
         for agent in metrics.agents:
-            metrics.plot_cumulative_results(agent)
             metrics.plot_move_duration_distribution(agent)
     metrics.plot_performance_radar()
     
