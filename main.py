@@ -179,7 +179,7 @@ def run_alphazero_vs_random(num_games: int, alpha_iterations=100):
     
     # Initialize agent
     model = Connect4Net()
-    checkpoint = torch.load("checkpoints/iteration_4.pt", map_location="cpu")
+    checkpoint = torch.load("checkpoints/iteration_20.pt", map_location="cpu")
     model.load_state_dict(checkpoint['model_state_dict'])
     model.eval()
     
@@ -259,16 +259,6 @@ def run_alphazero_vs_random(num_games: int, alpha_iterations=100):
     
     return total_metrics
 
-model = Connect4Net()
-checkpoint = torch.load("checkpoints/iteration_20.pt", map_location="cpu")
-model.load_state_dict(checkpoint['model_state_dict'])
-model.eval()
-
-# Wrap into policy_value_fn
-alpha_agent = AlphazeroMCTSAgent(
-    policy_value=lambda state: policy_value(state, model),
-    iterationnumber=100
-)
 if __name__ == "__main__":
     print("Connect Four Game")
     print("Choose game mode:")
