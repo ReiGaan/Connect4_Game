@@ -348,3 +348,7 @@ if __name__ == "__main__":
     plot_choice = input("\nWould you like to see performance visualizations? (y/n): ").strip().lower()
     if plot_choice == 'y':
         metrics.plot_results()
+        for agent in metrics.agents:
+            metrics.plot_move_duration_distribution(agent)
+    metrics.plot_performance_radar()
+    
