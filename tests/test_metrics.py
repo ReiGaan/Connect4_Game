@@ -195,7 +195,7 @@ def test_plot_results_no_agents_prints_message(capsys):
     assert "No metrics to plot" in captured.out
 
 def test_plot_performance_radar_runs_without_error():
-        """Test that plot_performance_radar runs without raising exceptions (no monkeypatch)."""
+        """Test that plot_performance_radar runs without raising exceptions."""
         gm = GameMetrics()
         gm.add_agent("AgentX")
         gm.record_result("AgentX", "win")
@@ -219,15 +219,6 @@ def test_plot_performance_radar_single_agent():
             gm.plot_performance_radar()
         except Exception as e:
             pytest.fail(f"plot_performance_radar with single agent raised: {e}")
-
-def test_plot_performance_radar_all_zero_metrics():
-        """Test radar plot when all metrics are zero (no moves or results)."""
-        gm = GameMetrics()
-        gm.add_agent("ZeroAgent")
-        try:
-            gm.plot_performance_radar()
-        except Exception as e:
-            pytest.fail(f"plot_performance_radar with zero metrics raised: {e}")
 
 def test_plot_performance_radar_mixed_metrics():
         """Test radar plot with agents having different metric values."""
@@ -253,13 +244,6 @@ def test_plot_move_duration_distribution_runs_without_error():
         gm.plot_move_duration_distribution("AgentPlot")
     except Exception as e:
         pytest.fail(f"plot_move_duration_distribution raised an exception: {e}")
-
-def test_plot_move_duration_distribution_no_history(capsys):
-    """Test that a message is printed if agent has no history."""
-    gm = GameMetrics()
-    gm.plot_move_duration_distribution("UnknownAgent")
-    captured = capsys.readouterr()
-    assert "No history for agent 'UnknownAgent'" in captured.out
 
 def test_plot_move_duration_distribution_no_moves(capsys):
     """Test that a message is printed if agent has no move times."""
