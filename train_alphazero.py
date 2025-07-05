@@ -39,7 +39,7 @@ class ReplayBuffer:
         """Load buffer from file"""
         buffer = ReplayBuffer(capacity)
         if os.path.exists(path):
-            buffer.buffer = deque(torch.load(path), maxlen=capacity)
+            buffer.buffer = deque(torch.load(path, weights_only=False), maxlen=capacity)
         return buffer
 
 class BoardDataset(Dataset):
@@ -286,7 +286,7 @@ if __name__ == "__main__":
         'buffer_size': 10000,
         'device': device,
         'checkpoint_dir': "checkpoints",
-        'resume_checkpoint': "iteration_3.pt"  # "iteration_X.pt" or "None"
+        'resume_checkpoint': "iteration_20.pt"  # "iteration_X.pt" or "None"
     }
     
     # Check for command line arguments to resume training
