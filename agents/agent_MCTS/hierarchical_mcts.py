@@ -7,7 +7,7 @@ import numpy as np
 from concurrent.futures import ThreadPoolExecutor
 import cProfile
 
-class HierachicalMCTSAgent(MCTSAgent):
+class HierarchicalMCTSAgent(MCTSAgent):
     """An extended MCTS agent for Connect4 with heuristic-guided simulation 
     and MinMax integration.
     This agent extends the base MCTSAgent by several enhancements:
