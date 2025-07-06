@@ -6,7 +6,7 @@ from agents.agent_human_user import user_move
 from agents.agent_random import generate_move as random_move
 from metrics.metrics import GameMetrics
 from agents.agent_MCTS.mcts import MCTSAgent
-from agents.agent_MCTS.hierachical_mcts import HierachicalMCTSAgent
+from agents.agent_MCTS.hierarchical_mcts import HierarchicalMCTSAgent
 from agents.agent_MCTS.alphazero_mcts import AlphazeroMCTSAgent
 from agents.alphazero.network import Connect4Net
 from agents.alphazero.inference import policy_value
@@ -179,8 +179,8 @@ if __name__ == "__main__":
     print("2: User vs MCTS Agent")
     print("3: MCTS Agent vs Random Agent (performance test)")
     print("4: Human vs Human (2 players)")
-    print("5: MCTS Agent vs Hierachical MCTS Agent")
-    print("6: Hierachical MCTS Agent vs random Agent (baseline test)")
+    print("5: MCTS Agent vs Hierarchical MCTS Agent")
+    print("6: Hierarchical MCTS Agent vs random Agent (baseline test)")
     print("7: AlphaZero Agent vs Random Agent")
     mode = input("Enter number: ").strip()
     metrics = GameMetrics()
@@ -219,16 +219,16 @@ if __name__ == "__main__":
             print(f"Game {_ + 1}/{num_games}")
             human_vs_agent(
             MCTSAgent(100),  
-            HierachicalMCTSAgent(iterationnumber=50),  
+            HierarchicalMCTSAgent(iterationnumber=50),  
             player_1="MCTS Agent",
-            player_2="Hierachical MCTS Agent",
+            player_2="Hierarchical MCTS Agent",
             metrics=metrics
             )
     elif mode == "6":
         human_vs_agent(
-            HierachicalMCTSAgent(25),  
+            HierarchicalMCTSAgent(25),  
             random_move,  
-            player_1="Hierachical MCTS Agent",
+            player_1="Hierarchical MCTS Agent",
             player_2="Random Agent",
             metrics=metrics
         )
