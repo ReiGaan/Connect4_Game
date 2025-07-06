@@ -259,16 +259,104 @@ def run_alphazero_vs_random(num_games: int, alpha_iterations=100):
     
     return total_metrics
 
+def run_alphazero_vs_mcts(num_games: int, alpha_iterations=100):
+    """Run multiple games between AlphaZero and MCTS agents"""
+    total_metrics = GameMetrics()
+    
+    # Initialize agent
+    model = Connect4Net()
+    checkpoint = torch.load("checkpoints/iteration_20.pt", map_location="cpu")
+    model.load_state_dict(checkpoint['model_state_dict'])
+    model.eval()
+    
+    alpha_agent = AlphazeroMCTSAgent(
+        policy_value=lambda state: policy_value(state, model),
+        iterationnumber=alpha_iterations
+    )
+    
+    # Track results
+    alpha_wins_started = 0
+    alpha_wins_not_started = 0
+    mcts_wins_started = 0
+    mcts_wins_not_started = 0
+    draws = 0
+    errors = 0
+    
+    for game_idx in range(num_games):
+        print(f"\nGame {game_idx+1}/{num_games}")
+        
+        # Show board for first game only
+        verbose = (game_idx == 0)
+        
+        # Alternate who starts
+        if game_idx % 2 == 0:
+            # AlphaZero starts as Player 1
+            player1 = "AlphaZero Agent"
+            player2 = "MCTS Agent"
+            agent1 = alpha_agent
+            agent2 = MCTSAgent(100)
+        else:
+            # Random starts as Player 1
+            player1 = "MCTS Agent"
+            player2 = "AlphaZero Agent"
+            agent1 = MCTSAgent(100)
+            agent2 = alpha_agent
+        
+        # Run the game
+        results, _ = human_vs_agent(
+            agent1,
+            agent2,
+            player_1=player1,
+            player_2=player2,
+            metrics=total_metrics,
+            verbose=verbose
+        )
+        
+        # Track results based on who started
+        if game_idx % 2 == 0:  # AlphaZero started
+            if results[0] == PLAYER1_PRINT:
+                alpha_wins_started += 1
+            elif results[0] == PLAYER2_PRINT:
+                mcts_wins_not_started += 1
+            elif results[0] == 'Draw':
+                draws += 1
+            elif results[0] == 'Error':
+                errors += 1
+        else:  # MCTS started
+            if results[0] == PLAYER1_PRINT:
+                mcts_wins_started += 1
+            elif results[0] == PLAYER2_PRINT:
+                alpha_wins_not_started += 1
+            elif results[0] == 'Draw':
+                draws += 1
+            elif results[0] == 'Error':
+                errors += 1
+    
+    # Print summary
+    print(f"\nResults after {num_games} games:")
+    print(f"AlphaZero wins when starting: {alpha_wins_started}")
+    print(f"AlphaZero wins when not starting: {alpha_wins_not_started}")
+    print(f"Total AlphaZero wins: {alpha_wins_started + alpha_wins_not_started}")
+    print(f"MCTS wins when starting: {mcts_wins_started}")
+    print(f"MCTS wins when not starting: {mcts_wins_not_started}")
+    print(f"Total MCTS wins: {mcts_wins_started + mcts_wins_not_started}")
+    print(f"Draws: {draws}")
+    print(f"Errors: {errors}")
+    
+    return total_metrics
+
 if __name__ == "__main__":
     print("Connect Four Game")
     print("Choose game mode:")
     print("1: User vs Random Agent")
     print("2: User vs MCTS Agent")
-    print("3: MCTS Agent vs Random Agent (performance test)")
+    print("3: MCTS Agent vs Random Agent (baseline test)")
     print("4: Human vs Human (2 players)")
     print("5: MCTS Agent vs Hierarchical MCTS Agent")
-    print("6: Hierarchical MCTS Agent vs random Agent (baseline test)")
-    print("7: AlphaZero Agent vs Random Agent")
+    print("6: Hierarchical MCTS Agent vs Random Agent (baseline test)")
+    print("7: AlphaZero Agent vs Random Agent (baseline test)")
+    print("8: AlphaZero Agent vs MCTS Agent (performance test)")
+
     mode = input("Enter number: ").strip()
     metrics = GameMetrics()
 
@@ -313,7 +401,6 @@ if __name__ == "__main__":
             metrics=metrics
             )
     elif mode == "6":
-        # Show full game for this single match
         human_vs_agent(
             HierarchicalMCTSAgent(25),  
             random_move,  
@@ -325,6 +412,9 @@ if __name__ == "__main__":
     elif mode == "7":
         num_games = int(input("How many games to play? "))
         metrics = run_alphazero_vs_random(num_games)
+    elif mode == "8":
+        num_games = int(input("How many games to play? "))
+        metrics = run_alphazero_vs_mcts(num_games)
     else:
         print("Invalid selection.")
         exit()
