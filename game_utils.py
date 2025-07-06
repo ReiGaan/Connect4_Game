@@ -1,6 +1,7 @@
 from typing import Callable, Optional, Any
 from enum import Enum
 import numpy as np
+import scipy.signal
 
 BOARD_COLS = 7
 BOARD_ROWS = 6
@@ -26,13 +27,28 @@ PlayerAction = np.int8  # The column to be played
 
 
 class GameState(Enum):
+    """
+    Enumeration representing the possible states of a Connect4 game.
+    Attributes:
+        IS_WIN (int): Indicates that the game has been won by a player.
+        IS_DRAW (int): Indicates that the game ended in a draw.
+        STILL_PLAYING (int): Indicates that the game is still ongoing.
+    """
+    
     IS_WIN = 1
     IS_DRAW = -1
     STILL_PLAYING = 0
-    IS_LOST = -100
 
 
 class MoveStatus(Enum):
+    """
+    Enumeration representing the possible statuses of a move in the Connect4 game.
+    Attributes:
+        IS_VALID (int): Indicates the move is valid.
+        WRONG_TYPE (str): Indicates the input does not have the correct type (should be PlayerAction).
+        OUT_OF_BOUNDS (str): Indicates the input is out of bounds.
+        FULL_COLUMN (str): Indicates the selected column is already full.
+    """
     IS_VALID = 1
     WRONG_TYPE = "Input does not have the correct type (PlayerAction)."
     OUT_OF_BOUNDS = "Input is out of bounds."
@@ -40,6 +56,9 @@ class MoveStatus(Enum):
 
 
 class SavedState:
+    """
+    A class to represent the saved state of a Connect4 game.
+    """
     pass
 
 
@@ -57,27 +76,25 @@ GenMove = Callable[
 
 def initialize_game_state() -> np.ndarray:
     """
-    Returns an ndarray, shape BOARD_SHAPE and data type (dtype) BoardPiece, initialized to 0 (NO_PLAYER).
+    Initializes and returns the starting state of the Connect4 game board.
+    Returns:
+        np.ndarray: A NumPy array of shape BOARD_SHAPE filled with NO_PLAYER values,
+        representing an empty game board.
     """
     return np.full(BOARD_SHAPE, NO_PLAYER, dtype=BoardPiece)
 
 
 def pretty_print_board(board: np.ndarray) -> str:
     """
-    Should return `board` converted to a human readable string representation,
-    to be used when playing or printing diagnostics to the console (stdout). The piece in
-    board[0, 0] of the array should appear in the lower-left in the printed string representation.
-    Here's an example output, note that we use PLAYER1_Print to represent PLAYER1 and PLAYER2_Print to represent PLAYER2):
-    |==============|
-    |              |
-    |              |
-    |    X X       |
-    |    O X X     |
-    |  O X O O     |
-    |  O O X X     |
-    |==============|
-    |0 1 2 3 4 5 6 |
+    Returns a string representation of the Connect4 board in a human-readable format.
+    Args:
+        board (np.ndarray): A 2D NumPy array representing the game board, where each cell contains a value corresponding to a player or empty space.
+    Returns:
+        str: A formatted string displaying the board with borders, player pieces, and column indices.
+    Notes:
+        - The mapping from board values to printable characters is defined by the constants NO_PLAYER_PRINT, PLAYER1_PRINT, and PLAYER2_PRINT.
     """
+ 
     piece_to_char = {
         NO_PLAYER: NO_PLAYER_PRINT,
         PLAYER1: PLAYER1_PRINT,
@@ -89,7 +106,7 @@ def pretty_print_board(board: np.ndarray) -> str:
     rows = []
     rows.append(border)  # Top border
     # Flip board to match that [0,0] is lower-left
-    for row in board:
+    for row in board[::1]:
         line = "|"
         for cell in row:
             line += piece_to_char[cell] + " "
@@ -106,6 +123,11 @@ def string_to_board(pp_board: str) -> np.ndarray:
     Takes the output of pretty_print_board and turns it back into an ndarray.
     This is quite useful for debugging, when the agent crashed and you have the last
     board state as a string.
+     Args:
+        pp_board (strin): A formatted string displaying the board with borders, player pieces, and column indices.
+    Returns:
+        board (np.ndarray): A 2D NumPy array representing the game board, where each cell contains a value corresponding to a player or empty space.
+    
     """
     char_to_piece = {
         NO_PLAYER_PRINT: NO_PLAYER,
@@ -118,7 +140,7 @@ def string_to_board(pp_board: str) -> np.ndarray:
 
     for i, row in enumerate(pp_board[1:-2]):
         column = 0
-        for j, cell in enumerate(row[1:-3]):
+        for j, cell in enumerate(row[1:-1]):
             if j % 2 == 0:
                 board_array[i, column] = char_to_piece[cell]
                 column += 1
@@ -130,50 +152,71 @@ def apply_player_action(board: np.ndarray, action: PlayerAction, player: BoardPi
     Sets board[i, action] = player, where i is the lowest open row. The input
     board should be modified in place, such that it's not necessary to return
     something.
-    """
-    set_value = False
-    for row in reversed(range(BOARD_ROWS)):
-        if board[row, action] == NO_PLAYER:
-            board[row, action] = player
-            set_value = True
-            break
-    if not set_value:
-        raise ValueError(f"Column {action+1} is full.")
 
+    Args:
+        board (np.ndarray): The current game board.
+        action (PlayerAction): The column to play in.
+        player (BoardPiece): The player making the move.
+    """
+    for i, cell in enumerate(board[::-1, action]):
+        if cell == NO_PLAYER:
+            board[BOARD_ROWS - 1 - i, action] = player
+            return
+    raise ValueError(f"Column {action+1} is full.")
 
 def connected_four(board: np.ndarray, player: BoardPiece) -> bool:
     """
     Returns True if there are four adjacent pieces equal to `player` arranged
     in either a horizontal, vertical, or diagonal line. Returns False otherwise.
+
+    Args:
+        board (np.ndarray): The current game board.
+        player (BoardPiece): The player to check for.
+
+    Returns:
+        bool: True if there are four in a row, False otherwise.
     """
-    if (
+    return (
         test_connect_horizontal(board, player)
         or test_connect_vertical(board, player)
-        or test_connect_diagonal(board, player)
-    ):
-        return True
-    else:
-        return False
+        or test_connect_diagonal(board, player))
+ 
 
 
 def test_connect_horizontal(board: np.ndarray, player: BoardPiece) -> bool:
     """
     Returns True if there are four adjacent pieces equal to `player` arranged
     in horizontal. Returns False otherwise.
+
+    Args:
+        board (np.ndarray): The current game board.
+        player (BoardPiece): The player to check for.
+
+    Returns:
+        bool: True if there are four in a horizontal, False otherwise.
     """
 
-    for row in board:
-        mask = (row == player).astype(int)
-        # Convolve with a window of size 4
-        if np.any(np.convolve(mask, np.ones(4, dtype=int), mode="valid") == 4):
-            return True
-    return False
+    # Create a mask where the player's pieces are 1, others are 0
+    mask = (board == player).astype(int)
+    # Define a horizontal kernel of length 4
+    kernel = np.ones((1, 4), dtype=int)
+    # Convolve mask with kernel
+    conv = scipy.signal.convolve2d(mask, kernel, mode="valid")
+    # Check if any value is 4 (i.e., four in a row)
+    return np.any(conv == 4)
 
 
 def test_connect_vertical(board: np.ndarray, player: BoardPiece) -> bool:
     """
     Returns True if there are four adjacent pieces equal to `player` arranged in a
     vertical line. Returns False otherwise.
+
+    Args:
+        board (np.ndarray): The current game board.
+        player (BoardPiece): The player to check for.
+
+    Returns:
+        bool: True if there are four in a vertical, False otherwise.
     """
     for col in range(board.shape[1]):
         for row in range(board.shape[0] - 3): 
@@ -185,35 +228,40 @@ def test_connect_diagonal(board: np.ndarray, player: BoardPiece) -> bool:
     """
     Returns True if there are four adjacent pieces equal to `player` arranged
     in a diagonal line. Returns False otherwise.
-    """
-    for row in range(board.shape[0] - 3):
-        for col in range(board.shape[1] - 3):
-            diagonal = board[
-                row : row + 4, col : col + 4
-            ].diagonal()  # Check top-left to bottom-right diagonals
-            diagonal_flipped = np.fliplr(
-                board[row : row + 4, col : col + 4]
-            ).diagonal()  # Check bottom-left to top-right diagonals
 
-            if np.all(diagonal == player) or np.all(diagonal_flipped == player):
-                return True
-    return False
+    Args:
+        board (np.ndarray): The current game board.
+        player (BoardPiece): The player to check for.
+
+    Returns:
+        bool: True if there are four in a diagonal, False otherwise.
+    """
+    mask = (board == player).astype(int)
+    kernel_top_left = np.eye(4, dtype=int)
+    kernel_bottom_left = np.fliplr(kernel_top_left)
+    conv_main = scipy.signal.convolve2d(mask, kernel_top_left, mode="valid")
+    conv_anti = scipy.signal.convolve2d(mask, kernel_bottom_left, mode="valid")
+    return np.any(conv_main == 4) or np.any(conv_anti == 4)
 
 
 def check_end_state(board: np.ndarray, player: BoardPiece) -> GameState:
     """
     Returns the current game state for the current `player`, i.e. has their last
     action won (GameState.IS_WIN) or drawn (GameState.IS_DRAW) the game,
-    or is play still on-going (GameState.STILL_PLAYING)? Or if the opponent GameState is win, mean
-    this player lost.
+    or is play still on-going (GameState.STILL_PLAYING)? 
+
+    Args:
+        board (np.ndarray): The current game board.
+        player (BoardPiece): The player whose move was last played.
+
+    Returns:
+        GameState: The current state of the game (win, draw, or still playing).
     """
     opponent = get_opponent(player)
     player_won = connected_four(board, player)
     opponent_won = connected_four(board, opponent)
     if player_won:
         return GameState.IS_WIN
-    elif opponent_won:
-        return GameState.IS_LOST
     elif all(
         check_move_status(board, PlayerAction(col)) == MoveStatus.FULL_COLUMN
         for col in range(board.shape[1])
@@ -226,6 +274,12 @@ def check_end_state(board: np.ndarray, player: BoardPiece) -> GameState:
 def get_opponent(player: BoardPiece) -> BoardPiece:
     """
     Returns the opposite player from the current `player`.
+
+    Args:
+        player (BoardPiece): The current player.
+
+    Returns:
+        BoardPiece: The opponent player.
     """
     if player == PLAYER1:
         return PLAYER2
@@ -239,9 +293,12 @@ def check_move_status(board: np.ndarray, column: Any) -> MoveStatus:
     """
     Returns a MoveStatus indicating whether a move is accepted as a valid move
     or not, and if not, why.
-    The provided column must be of the correct type (PlayerAction).
-    Furthermore, the column must be within the bounds of the board and the
-    column must not be full.
+    Args:
+        board (np.ndarray): The current game board.
+        column (Any): The column to check (should be PlayerAction).
+
+    Returns:
+        MoveStatus: The status of the move (valid, wrong type, out of bounds, or full column).
     """
 
     # Check Type of column

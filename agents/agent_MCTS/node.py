@@ -164,8 +164,7 @@ class Node:
         if child.visits == 0:
             return float("inf")
         exploitation = child.wins[self.player] / child.visits
-        exploration = exploration_param * child.prior * np.sqrt((self.visits) /1 + child.visits
-        )
+        exploration = exploration_param * child.prior * np.sqrt(self.visits) / (1 + child.visits)
         return exploitation + exploration
     
     def best_child(self) -> "Node":

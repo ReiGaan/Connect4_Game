@@ -1,6 +1,6 @@
 from .mcts import MCTSAgent
 from game_utils import (
-    PlayerAction, PLAYER1, PLAYER2,  BoardPiece, MoveStatus, apply_player_action, check_move_status, get_opponent
+    PlayerAction, PLAYER1, PLAYER2,  BoardPiece, MoveStatus, apply_player_action, check_move_status, get_opponent, check_end_state
 )
 from .node import Node
 import numpy as np
@@ -279,9 +279,12 @@ class HierachicalMCTSAgent(MCTSAgent):
                 action = np.random.choice(best_moves)
                 apply_player_action(node_state, PlayerAction(action), player)
 
-                terminal, result = Node(node_state, player).check_terminal_state()
-                if terminal:
-                    return result
+                state = check_end_state(node_state, player)
+                if state.name == "IS_WIN":
+                    return {player: 1, get_opponent(player): -1}
+                elif state.name == "IS_DRAW":
+                    return {PLAYER1: 0, PLAYER2: 0}
+
 
             player = get_opponent(player)
             depth += 1
