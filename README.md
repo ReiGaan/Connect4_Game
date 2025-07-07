@@ -5,11 +5,14 @@ The main focus is on applying principles of software development, especially cle
 
 https://miro.com/app/board/uXjVIsyA0Qk=/
 
+
 ## Agents
 
-- **MCTS Agent:** Plays Connect Four using Monte Carlo Tree Search.
-- **Random Agent:** Makes random valid moves.
-- **Human Agent:** Allows a human to play against either agent.
+- **MCTS Agent:** Classic Monte Carlo Tree Search agent.
+- **Hierarchical MCTS Agent:** MCTS with with heuristics (immediate win/lose detection, two/three-in-a-row preference).
+- **AlphaZero MCTS Agent:** MCTS guided by a neural network (AlphaZero-style).
+- **Random Agent:** Selects random valid moves.
+- **Human Agent:** Allows a human to play via console input.
 
 ## Getting Started
 
@@ -34,7 +37,7 @@ To run a series of games between the MCTS agent and the Random agent:
 python main.py
 ```
 
-You will be prompted to select the game mode (e.g., Human vs Random Agent, Human vs MCTS Agent, MCTS vs Random Agent, Human vs Human).
+You will be prompted to select the game mode (e.g., Human vs Random Agent, Human vs MCTS Agent, ...).
 
 --- 
 
@@ -53,30 +56,45 @@ Game/
 ├── agents/
 │   ├── agent_MCTS/
 │   │   ├── mcts.py
-│   │   ├── Node.py
-|   |   └── __init__.py
+│   │   ├── improved_mcts.py
+│   │   ├── hierarchical_mcts.py
+│   │   ├── alphazero_mcts.py
+│   │   ├── node.py
+│   │   └── __init__.py
 │   ├── agent_random/
-│   │   ├── human_user.py
 │   │   └── __init__.py
 │   └── agent_human_user/
 │       ├── human_user.py
 │       └── __init__.py
+├── alphazero/
+│   ├── network.py
+│   ├── inference.py 
+│   ├── model.pt
+│   └── train_dummy_data.py
+├── profiling/
+│   ├── mcts_profile.stats 
+│   ├── profile_alphanet.py
+│   ├── profile_gpu.py
+│   ├── profile_hirachical_mcts.py
+│   ├── profile_mcts.py
+│   └── ProfilingReport.py
+├── metrics/
+│   ├── metrics.py
+│   └── __init__.py
 ├── tests/
 │   ├── test_game_utils.py
 │   ├── test_node.py
-│   └── test_mcts.py
+│   ├── test_mcts.py
+│   ├── test_hierarchical_mcts.py
+│   ├── test_metrics.py
+│   └── test_training.py
 ├── game_utils.py
-└── main.py
+├── main.py
+└── requirements.txt
+└── train_alphazero.py
 ```
-
-## Customization
-
-- You can modify the MCTS agent’s iteration count or logic in `agents/agent_MCTS/mcts.py` or in the `main.py` as `args_2`
-- Add or modify tests in the `tests/` directory.
 
 ## Code of Honour & Acknowledgements
 - AI assistance (GitHub Copilot and ChatGPT) was used to help write comments, improve code style, and suggest test improvement of test covering.
 - All code was written by human first and each suggestion from AI was reviewed and adapted to fit the project requirements.
 
-## Questions or Comments?
-Text me at anina.morgner@bccn-berlin.de
