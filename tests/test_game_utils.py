@@ -501,6 +501,7 @@ def test_check_end_state_win():
     board_win[5, 1:5] = PLAYER1
     assert (check_end_state(board_win, PLAYER1)) == GameState.IS_WIN
 
+
 def test_check_end_state_loose():
     """
     Checks end_state of game - Win.
@@ -514,9 +515,13 @@ def test_check_end_state_loose():
         PLAYER2,
         NO_PLAYER,
     )
+
     board_loose = np.full(BOARD_SHAPE, NO_PLAYER, dtype=BoardPiece)
     board_loose[5, 1:5] = PLAYER2
-    assert (check_end_state(board_loose, PLAYER1)) == GameState.STILL_PLAYING #as no separate Lost
+    assert (
+        check_end_state(board_loose, PLAYER1)
+    ) == GameState.STILL_PLAYING  # as no separate Lost
+
 
 def test_check_end_state_draw():
     """
@@ -531,6 +536,7 @@ def test_check_end_state_draw():
         PLAYER2,
         NO_PLAYER,
     )
+
     board_full = np.array(
         [
             [PLAYER2, PLAYER1, PLAYER2, PLAYER2, PLAYER2, PLAYER1, PLAYER2],
@@ -541,7 +547,10 @@ def test_check_end_state_draw():
             [PLAYER2, PLAYER1, PLAYER2, PLAYER1, PLAYER1, PLAYER1, PLAYER2],
         ]
     )
-    assert (check_end_state(board_full, PLAYER2)) == GameState.IS_DRAW and (check_end_state(board_full, PLAYER1)) == GameState.IS_DRAW
+    assert (check_end_state(board_full, PLAYER2)) == GameState.IS_DRAW and (
+        check_end_state(board_full, PLAYER1)
+    ) == GameState.IS_DRAW
+
 
 def test_check_end_state_playing():
     """
@@ -556,6 +565,7 @@ def test_check_end_state_playing():
         PLAYER2,
         NO_PLAYER,
     )
+
     board_full = np.array(
         [
             [PLAYER2, PLAYER1, PLAYER2, PLAYER2, PLAYER2, PLAYER1, PLAYER2],
@@ -568,6 +578,7 @@ def test_check_end_state_playing():
     )
     board_full[0, :] = NO_PLAYER
     assert (check_end_state(board_full, PLAYER2)) == GameState.STILL_PLAYING
+
 
 def test_action_type_consistency():
     """

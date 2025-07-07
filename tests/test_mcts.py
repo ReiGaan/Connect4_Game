@@ -25,6 +25,7 @@ def test_backpropagation():
 
     assert root_node.visits == 1 and root_node.wins[PLAYER1] == 1
 
+
 def test_mcts_never_plays_illegal_move():
     """
     Test that the MCTS agent never selects an illegal move by repeatedly provides
@@ -39,6 +40,7 @@ def test_mcts_never_plays_illegal_move():
         PLAYER1,
         PLAYER2,
     )
+
     agent = MCTSAgent(iterationnumber=10)
     num_trials = 10
 
@@ -50,14 +52,16 @@ def test_mcts_never_plays_illegal_move():
                 [PLAYER2, PLAYER1, PLAYER1, PLAYER2, PLAYER2, PLAYER1, PLAYER2],
                 [PLAYER1, PLAYER2, PLAYER1, PLAYER1, PLAYER1, PLAYER2, PLAYER2],
                 [PLAYER1, PLAYER2, PLAYER1, PLAYER2, PLAYER2, PLAYER1, PLAYER1],
-                [PLAYER2, PLAYER1, PLAYER2, PLAYER1, PLAYER1, PLAYER1, PLAYER2],
+                [NO_PLAYER, PLAYER1, PLAYER2, PLAYER1, PLAYER1, PLAYER1, PLAYER2],  # Make at least one move valid
             ]
         )
 
         player = BoardPiece(1)
         saved_state = None
         action, saved_state = agent.mcts_move(
-            board.copy(), player, saved_state, 
+            board.copy(),
+            player,
+            saved_state,
         )
 
         try:
@@ -78,6 +82,7 @@ def test_mcts_never_plays_illegal_move():
                 ],
             )
             raise
+
 
 def test_mcts_always_wins_against_random():
     """
@@ -113,7 +118,9 @@ def test_mcts_always_wins_against_random():
         for _ in range(42):  # Max moves in Connect Four
             if player == PLAYER1:
                 action, saved_state = agent.mcts_move(
-                    board.copy(), player, saved_state, 
+                    board.copy(),
+                    player,
+                    saved_state,
                 )
             else:
                 action = random_agent(board, player)
@@ -128,12 +135,14 @@ def test_mcts_always_wins_against_random():
 
         assert winner == PLAYER1, f"MCTS did not win, winner was {winner}"
 
+
 def test_simulation_switches_players_correctly():
     """
     Tests that the simulation function correctly switches players during the simulation.
     """
     from agents.agent_MCTS.node import Node
     from game_utils import PLAYER1, initialize_game_state
+
     agent = MCTSAgent()
     # Set up a board where PLAYER1 can win in one move
     board = initialize_game_state()
@@ -143,4 +152,3 @@ def test_simulation_switches_players_correctly():
     result = agent.simulate(node, PLAYER1)
     print(result)
     assert result[PLAYER1] == 1
-
