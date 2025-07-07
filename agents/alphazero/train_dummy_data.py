@@ -3,11 +3,24 @@ from torch.utils.data import DataLoader
 import numpy as np
 from network import Connect4Net, BoardDataset, CustomLoss
 
-# Generate dummy data (replace this with self-play later)
+
+# Generate dummy data (replace with self-play later)
 def generate_dummy_data(n=100):
-    states = np.random.randint(0, 2, (n, 3, 6, 7))  # 3 channels, 6x7 board
-    policies = np.random.dirichlet(np.ones(7), size=n)  # 7 moves
-    values = np.random.uniform(-1, 1, (n, 1))  # scalar value
+    """
+    Generates dummy training data for a Connect4 AlphaZero agent.
+
+    Parameters:
+        n (int): Number of data samples to generate. Default is 100.
+
+    Returns:
+        np.ndarray: An array of length n, where each element is a tuple containing:
+            - states (np.ndarray): A (3, 6, 7) array representing the board state with 3 channels.
+            - policies (np.ndarray): A (7,) array representing the move probabilities (policy vector).
+            - values (float): A scalar value in the range [-1, 1] representing the value of the state.
+    """
+    states = np.random.randint(0, 2, (n, 3, 6, 7))  
+    policies = np.random.dirichlet(np.ones(7), size=n)  
+    values = np.random.uniform(-1, 1, (n, 1)) 
     data = np.array(list(zip(states, policies, values)), dtype=object)
     return data
 
