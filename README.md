@@ -49,13 +49,6 @@ To run all tests:
 pytest tests/
 ```
 
-### GPU Support
-
-Training and profiling scripts automatically select the best available device.
-If a CUDA-capable GPU is detected it will be used, otherwise PyTorch's MPS
-backend enables training on Apple Silicon GPUs. When neither is available, the
-CPU is used.
-
 ## Project Structure
 
 ```
