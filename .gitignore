@@ -184,3 +184,4 @@ Thumbs.db        # Windows thumbnail cache
 *.ico
 
 .vscode/*
+/checkpoints
