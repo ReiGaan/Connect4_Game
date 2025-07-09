@@ -93,8 +93,11 @@ class MCTSAgent:
 
             # === SELECTION ===
             node = self.selection_process(node)
+            player = node.player
+
             # === EXPANSION ===
             node = self.expansion(node, player)
+            player = node.player
 
             # === SIMULATION ===
             result = node.result if node.is_terminal else self.simulate(node, player)
