@@ -73,7 +73,8 @@ class ReplayBuffer:
         """
         buffer = ReplayBuffer(capacity)
         if os.path.exists(path):
-            buffer.buffer = deque(torch.load(path), maxlen=capacity)
+            data = torch.load(path, weights_only=False)
+            buffer.buffer = deque(data, maxlen=capacity)
         return buffer
 
 
@@ -307,7 +308,7 @@ if __name__ == "__main__":
         'buffer_size': 10000,
         'device': device,
         'checkpoint_dir': "checkpoints",
-        'resume_checkpoint': "iteration_20.pt"
+        'resume_checkpoint': "iteration_2.pt"
     }
 
     import argparse
