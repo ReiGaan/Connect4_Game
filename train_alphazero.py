@@ -73,7 +73,7 @@ class ReplayBuffer:
         """
         buffer = ReplayBuffer(capacity)
         if os.path.exists(path):
-            buffer.buffer = deque(torch.load(path, weights_only=False), maxlen=capacity)
+            buffer.buffer = deque(torch.load(path), maxlen=capacity)
         return buffer
 
 
