@@ -110,6 +110,9 @@ class CustomLoss(nn.Module):
         super().__init__()
 
     def forward(self, target_value, predicted_value, target_policy, predicted_policy):
+        target_value = target_value.to(predicted_value.device)
+        target_policy = target_policy.to(predicted_policy.device)
         value_loss = (predicted_value - target_value) ** 2
-        policy_loss = torch.sum(-predicted_policy * (1e-8 + target_policy).log(), dim=1)
-        return (value_loss.view(-1) + policy_loss).mean()
+        policy_loss = torch.sum(
+            -target_policy * torch.log(predicted_policy + 1e-8), dim=1
+        )        return (value_loss.view(-1) + policy_loss).mean()

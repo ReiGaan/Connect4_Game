@@ -243,3 +243,21 @@ def test_dataloader_integration():
         assert policies.shape == (2, 7)
         assert values.shape == (2, 1)
         break
+
+
+def test_custom_loss_policy_improvement():
+    """Loss decreases as predicted policy approaches the target."""
+    loss_fn = CustomLoss()
+
+    target_policy = torch.tensor([[0.7, 0.1, 0.2, 0, 0, 0, 0]], dtype=torch.float32)
+    target_value = torch.tensor([[0.0]], dtype=torch.float32)
+
+    pred_policy_far = torch.full((1, 7), 1 / 7, dtype=torch.float32)
+    pred_value = torch.tensor([[0.0]], dtype=torch.float32)
+
+    loss_far = loss_fn(target_value, pred_value, target_policy, pred_policy_far)
+
+    pred_policy_close = 0.5 * pred_policy_far + 0.5 * target_policy
+    loss_close = loss_fn(target_value, pred_value, target_policy, pred_policy_close)
+
+    assert loss_close < loss_far
