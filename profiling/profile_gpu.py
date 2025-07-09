@@ -4,7 +4,12 @@ from agents.alphazero.network import Connect4Net
 
 # Initialize model and dummy input
 model = Connect4Net()
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+if torch.cuda.is_available():
+    device = torch.device("cuda")
+elif getattr(torch.backends, "mps", None) and torch.backends.mps.is_available():
+    device = torch.device("mps")
+else:
+    device = torch.device("cpu")
 model.to(device)
 
 # Adjust the input size based on the model's requirements
@@ -21,5 +26,4 @@ with profile(
         output = model(dummy_input)
 
 # Write profiling results to a file
-with open('gpu_profile_results.log', 'w') as log_file:
-    log_file.write(prof.key_averages().table(sort_by="cuda_time_total", row_limit=10))
+with open('gpu_profile_results.log', 'w') as log_file:    log_file.write(prof.key_averages().table(sort_by="cuda_time_total", row_limit=10))
