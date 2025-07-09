@@ -25,6 +25,19 @@ def test_replay_buffer_add_single():
     assert len(buffer) == 1
     assert buffer.buffer[0] == exp
 
+
+def test_replay_buffer_save_load(tmp_path):
+    """Ensure ReplayBuffer.load can load a previously saved buffer."""
+    buffer = ReplayBuffer(capacity=5)
+    exp = (np.zeros((3, 6, 7)), np.zeros(7), 0.0)
+    buffer.add(exp)
+
+    file_path = tmp_path / "buffer.pt"
+    buffer.save(file_path)
+
+    loaded = ReplayBuffer.load(file_path, capacity=5)
+    assert len(loaded) == 1
+
 def test_board_dataset_empty():
     """
     Test that BoardDataset correctly handles an empty input.
