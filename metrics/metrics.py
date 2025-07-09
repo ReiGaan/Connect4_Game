@@ -143,7 +143,7 @@ class GameMetrics:
 
         move_times = self.history[agent_name]['move_times']
         if not move_times:
-            print(f"No move times recorded for agent '{agent_name}'")
+            print(f"No move times recorded for agent '{agent_name}Agent'")
             return
 
         plt.figure(figsize=(8, 5))

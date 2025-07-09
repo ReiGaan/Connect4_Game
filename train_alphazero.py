@@ -73,7 +73,7 @@ class ReplayBuffer:
         """
         buffer = ReplayBuffer(capacity)
         if os.path.exists(path):
-            buffer.buffer = deque(torch.load(path), maxlen=capacity)
+            buffer.buffer = deque(torch.load(path, weights_only=False), maxlen=capacity)
         return buffer
 
 
@@ -119,7 +119,7 @@ def self_play(model, device, mcts_iterations=100, temperature=1.0):
 
     Args:
         model (torch.nn.Module): The neural network model.
-        device (str): Device to run inference on ('cpu' or 'cuda').
+        device (str): Device to run inference on ('cpu', 'cuda', or 'mps').
         mcts_iterations (int): Number of MCTS simulations per move.
         temperature (float): Exploration temperature.
 
@@ -202,7 +202,7 @@ def train_alphazero(
         mcts_iterations (int): MCTS simulations per move.
         learning_rate (float): Learning rate for optimizer.
         buffer_size (int): Capacity of the replay buffer.
-        device (str): Computation device ('cpu' or 'cuda').
+        device (str): Computation device ('cpu', 'cuda', or 'mps').
         checkpoint_dir (str): Path to save checkpoints.
         resume_checkpoint (str or None): Resume from this checkpoint if provided.
 
@@ -294,7 +294,12 @@ if __name__ == "__main__":
     """
     Entry point for training the AlphaZero model. Parses CLI arguments and starts training.
     """
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if torch.cuda.is_available():
+        device = torch.device("cuda")
+    elif getattr(torch.backends, "mps", None) and torch.backends.mps.is_available():
+        device = torch.device("mps")
+    else:
+        device = torch.device("cpu")
     print(f"Using device: {device}")
 
     config = {
