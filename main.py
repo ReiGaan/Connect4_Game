@@ -184,7 +184,7 @@ def run_alphazero_vs_random(num_games: int, alpha_iterations=100):
     model.eval()
     
     alpha_agent = AlphazeroMCTSAgent(
-        policy_value=lambda state: policy_value(state, model),
+        policy_value=lambda state, player: policy_value(state, model, player),
         iterationnumber=alpha_iterations
     )
     
@@ -270,7 +270,7 @@ def run_alphazero_vs_mcts(num_games: int, alpha_iterations=100):
     model.eval()
     
     alpha_agent = AlphazeroMCTSAgent(
-        policy_value=lambda state: policy_value(state, model),
+        policy_value=lambda state, player: policy_value(state, model, player),
         iterationnumber=alpha_iterations
     )
     
