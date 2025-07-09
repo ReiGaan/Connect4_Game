@@ -128,7 +128,7 @@ def self_play(model, device, mcts_iterations=100, temperature=1.0):
     """
     board = initialize_game_state()
     agent = AlphazeroMCTSAgent(
-        lambda state: policy_value(state, model, device),
+        lambda state, player: policy_value(state, model, player, device),
         iterationnumber=mcts_iterations
     )
     saved_state = None

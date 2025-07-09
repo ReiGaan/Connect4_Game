@@ -30,8 +30,9 @@ class AlphazeroMCTSAgent(MCTSAgent):
         Initializes the AlphaZero MCTS agent.
 
         Args:
-            policy_value (callable): A function that takes a board state and returns a tuple of
-                                    (policy: Dict[action, prior], value: float).
+            policy_value (callable): A function that takes a board state and the
+                current player and returns a tuple of
+                (policy: Dict[action, prior], value: float).
             iterationnumber (int): Number of MCTS iterations per move.
         """
         super().__init__(iterationnumber)
@@ -51,7 +52,7 @@ class AlphazeroMCTSAgent(MCTSAgent):
         if node.is_terminal:
             return node.result
 
-        _, value = self.policy_value(node.state)
+        _, value = self.policy_value(node.state, node.player)
         # Return value from the root player’s perspective
         return {PLAYER1: value, PLAYER2: 1 - value}
 
@@ -83,7 +84,7 @@ class AlphazeroMCTSAgent(MCTSAgent):
         if node.is_terminal or node.is_fully_expanded():
             return node
 
-        policy, _ = self.policy_value(node.state)
+        policy, _ = self.policy_value(node.state, node.player)
         for action in node.untried_actions.copy():
             next_state = node.state.copy()
             apply_player_action(next_state, action, player)

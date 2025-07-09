@@ -1,17 +1,28 @@
 import torch
 import numpy as np
-from game_utils import check_move_status, MoveStatus, PlayerAction, BOARD_ROWS, BOARD_COLS
+from game_utils import (
+    check_move_status,
+    MoveStatus,
+    PlayerAction,
+    BOARD_ROWS,
+    BOARD_COLS,
+    get_opponent,
+)
 
-def policy_value(state: np.ndarray, model: torch.nn.Module, device='cpu'):
+def policy_value(
+    state: np.ndarray,
+    model: torch.nn.Module,
+    current_player: int,
+    device: str = "cpu",
+):
     """
     Given a board state, returns:
     - A dict mapping legal moves (actions) to prior probabilities
     - A scalar value estimate for the current player
     """
     model.eval()
-    
-    current_player = 1  # Or get this from your state/game logic
-    opponent_player = 2 if current_player == 1 else 1
+
+    opponent_player = get_opponent(current_player)
 
     # Create planes
     plane_current = (state == current_player).astype(np.float32)
