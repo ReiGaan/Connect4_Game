@@ -1,23 +1,21 @@
 from .mcts import MCTSAgent
 from game_utils import (
-    PlayerAction, PLAYER1, PLAYER2,  BoardPiece, MoveStatus, apply_player_action, check_move_status, get_opponent
+    PlayerAction,
+    PLAYER1,
+    PLAYER2,
+    BoardPiece,
+    MoveStatus,
+    apply_player_action,
+    check_move_status,
+    get_opponent,
 )
 from .node import Node
-"""
-Needed from Network:
-function that wraps around your neural network and applies it to a board state:
-method policy_value(state)
-(policy_dict, value) = policy_value_fn(state)
-policy_dict: {action: probability} only legal actions
-value: a scalar between 0–1 (e.g., probability of win for current player)
-"""
+
 
 class AlphazeroMCTSAgent(MCTSAgent):
     """MCTS agent for Connect4 useable for alphazero implementation.
-    This agent changes the base MCTSAgent by several parts:
+    This agent changes the base MCTSAgent:
     - Use prior knowledge for best child choose and so change UCT to PUCT function.
-    - ...
-    - ...
     Functions:
         mcts_move(board, root_player, saved_state):
             Performs the MCTS move based on the current board state and player.
@@ -26,19 +24,38 @@ class AlphazeroMCTSAgent(MCTSAgent):
     Attributes:
         iterationnumber (int): Number of MCTS iterations per move.
     """
+
     def __init__(self, policy_value: callable, iterationnumber=100):
+        """
+        Initializes the AlphaZero MCTS agent.
+
+        Args:
+            policy_value (callable): A function that takes a board state and returns a tuple of
+                                    (policy: Dict[action, prior], value: float).
+            iterationnumber (int): Number of MCTS iterations per move.
+        """
         super().__init__(iterationnumber)
         self.policy_value = policy_value
 
     def simulate(self, node: Node, player: BoardPiece):
+        """
+        Simulates the value of a node using the policy-value function.
+
+        Args:
+            node (Node): The current node in the tree.
+            player (BoardPiece): The player performing the simulation.
+
+        Returns:
+            Dict[BoardPiece, float]: A dictionary mapping players to value estimates from the root player's perspective.
+        """
         if node.is_terminal:
             return node.result
-        
+
         _, value = self.policy_value(node.state)
         # Return value from the root player’s perspective
         return {PLAYER1: value, PLAYER2: 1 - value}
-    
-    def selection_process(self, node):
+
+    def selection_process(self, node: Node) -> Node:
         """
         Traverses the tree from the given node by repeatedly selecting the best child node based on prior knowledge
         until a node is found that is either not fully expanded or is a terminal node.
@@ -47,21 +64,30 @@ class AlphazeroMCTSAgent(MCTSAgent):
         Returns:
             The first node encountered that is either not fully expanded or is a terminal node.
         """
-        
+
         while node.is_fully_expanded() and not node.is_terminal:
             node = node.best_child_based_prior_knowledge()
         return node
 
-
-    def expansion(self, node, player):
+    def expansion(self, node: Node, player: BoardPiece) -> Node:
+        """
+        Expands the given node by adding child nodes for each untried action.
+        For each untried action from the current node, this method:
+        If the node is terminal or already fully expanded, it is returned unchanged.
+        Args:
+            node: The current MCTS node to expand.
+            player: The player to apply actions for at this node.
+        Returns:
+            The expanded node (or the original node if terminal or fully expanded).
+        """
         if node.is_terminal or node.is_fully_expanded():
             return node
 
         policy, _ = self.policy_value(node.state)
-        for action in node.untried_actions.copy(): 
+        for action in node.untried_actions.copy():
             next_state = node.state.copy()
             apply_player_action(next_state, action, player)
-            prior = policy.get(action, 1e-5) 
+            prior = policy.get(action, 1e-5)
             next_player = get_opponent(player)
             node.expand(action, next_state, next_player, prior=prior)
         return node

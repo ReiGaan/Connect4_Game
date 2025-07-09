@@ -1,21 +1,3 @@
-"""
-This module implements the Monte Carlo Tree Search (MCTS) algorithm for game-playing agents.
-Functions:
-mcts_move(board, root_player, saved_state, iterationnumber=iterationnumber)
-    Perform the next move using the MCTS algorithm, returning the chosen action and updated tree node.
-simulate(node, player)
-    Simulate a random playout from the given node until the game ends, returning the result.
-    Backpropagate the simulation result up the tree, updating win and visit counts.
-expand_to_next_children(player, node)
-    Expand the current node by selecting and applying a valid move, prioritizing immediate wins or blocks.
-Constants:
-iterationnumber: Default number of MCTS iterations per move.
-Imports:
-numpy, game_utils (BoardPiece, PlayerAction, SavedState, apply_player_action, MoveStatus, check_move_status, get_opponent, PLAYER1, PLAYER2), Node
-Classes:
-Node: Represents a node in the MCTS tree (imported from .node).
-"""
-
 import numpy as np
 from game_utils import (
     BoardPiece,
@@ -33,7 +15,39 @@ from metrics.metrics import GameMetrics
 from .node import Node
 
 
-class MCTSAgent: 
+class MCTSAgent:
+    """
+    An agent that uses the Monte Carlo Tree Search (MCTS) algorithm to select actions in a turn-based game.
+
+    The MCTSAgent explores possible future game states by building a search tree through repeated simulations,
+    allowing it to make statistically-informed decisions without explicit strategy coding.
+
+    The agent follows the four standard MCTS phases:
+        1. Selection: Traverse the tree by selecting the best child nodes using a policy (e.g., UCB1).
+        2. Expansion: Add a new child node corresponding to an untried action.
+        3. Simulation: Play out the game from the new node using random moves.
+        4. Backpropagation:  Propagate the result of the simulation back up the tree to update statistics.
+
+    Attributes:
+        iteration_count (int): Number of MCTS iterations to perform per move.
+
+    Methods:
+        mcts_move(board, root_player, saved_state, player_name, metrics=None):
+            Executes MCTS from the current board state and returns the chosen action and updated state.
+        selection_process(node):
+            Traverses the tree to find the next node to expand.
+        expansion(node, player):
+            Expands the node by adding a new child for an untried move.
+        simulate(node, player):
+            Simulates a random play-out from a given node until a terminal state is reached.
+        backpropagate(node, result):
+            Updates the tree statistics based on simulation results.
+        expand_to_next_children(player, node):
+            Chooses the next untried action for expansion, prioritizing winning or blocking moves.
+        __call__(board, player, saved_state, *args):
+            Delegates to mcts_move to make the agent callable like a function.
+    """
+
     def __init__(self, iterationnumber: int = 100):
         """
         Initialize the MCTS agent with a specified number of iterations.
@@ -43,11 +57,12 @@ class MCTSAgent:
         """
         self.iterationnumber = iterationnumber
 
-    def mcts_move(self, 
+    def mcts_move(
+        self,
         board: np.ndarray,
         root_player: BoardPiece,
         saved_state: SavedState | None,
-        player_name: str,
+        player_name: str | None = None,
         metrics: GameMetrics | None = None,
     ) -> tuple[PlayerAction, SavedState | None]:
         """
@@ -87,15 +102,17 @@ class MCTSAgent:
             # === BACKPROPAGATION ===
             self.backpropagate(node, result)
 
-        # Choose the action of the most visited, for too low iterationnumber it happens that
-        # the children of the current node are empty, so we need to check if there are any children
-        # before trying to get the most visited child, as iterationnumber could be too low
+        # fallback to random valid action if no children exist.
         if not current_node.children:
-            print("No children found for current_node. Returning a random valid action.")
+            print(
+                "No children found for current_node. Returning a random valid action."
+            )
             valid_moves = current_node.get_valid_moves()
             action = np.random.choice(valid_moves)
             return action, current_node
-        most_visited = max(current_node.children.items(), key=lambda item: item[1].visits)
+        most_visited = max(
+            current_node.children.items(), key=lambda item: item[1].visits
+        )
         action = most_visited[0]
         apply_player_action(root_node.state, action, root_player)
         saved_state = root_node
@@ -110,11 +127,10 @@ class MCTSAgent:
         Returns:
             The first node encountered that is either not fully expanded or is a terminal node.
         """
-        
+
         while node.is_fully_expanded() and not node.is_terminal:
             node = node.best_child()
         return node
-
 
     def expansion(self, node, player):
         """
@@ -136,7 +152,6 @@ class MCTSAgent:
             node = child_node
         return node
 
-
     def simulate(self, node: Node, player: BoardPiece) -> dict[BoardPiece, int]:
         """
         Simulate the following game turns from the current node using random play until the game ends.
@@ -149,12 +164,13 @@ class MCTSAgent:
             dict[BoardPiece, int]: Mapping of each player to their simulation result score.
         """
         node_state = node.state.copy()
-
+        # Note: This simulation assumes games will always terminate.
         while True:
             valid_moves = [
                 col
                 for col in range(node_state.shape[1])
-                if check_move_status(node_state, PlayerAction(col)) == MoveStatus.IS_VALID
+                if check_move_status(node_state, PlayerAction(col))
+                == MoveStatus.IS_VALID
             ]
             if not valid_moves:
                 return {PLAYER1: 0, PLAYER2: 0}
@@ -164,13 +180,11 @@ class MCTSAgent:
 
             state = check_end_state(node_state, player)
             if state.name == "IS_WIN":
-               return {player: 1, get_opponent(player): -1}
+                return {player: 1, get_opponent(player): -1}
             elif state.name == "IS_DRAW":
                 return {PLAYER1: 0, PLAYER2: 0}
 
-
             player = get_opponent(player)
-
 
     def backpropagate(self, node: Node, result: dict[BoardPiece, int]) -> None:
         """
@@ -189,9 +203,8 @@ class MCTSAgent:
                 current.wins[player_name] += score
             current = current.parent
 
-
-    def expand_to_next_children(self,
-        player: BoardPiece, node: Node
+    def expand_to_next_children(
+        self, player: BoardPiece, node: Node
     ) -> tuple[PlayerAction, np.ndarray]:
         """
         Select and apply a valid move from the current node's state.
@@ -206,12 +219,10 @@ class MCTSAgent:
             tuple[PlayerAction, np.ndarray]: The selected action and the resulting game state.
         """
         opponent = get_opponent(player)
-        candidate_moves = []
 
         for action in node.untried_actions:
             next_state = node.state.copy()
             apply_player_action(next_state, action, player)
-            candidate_moves.append((action, next_state))
 
         # Otherwise, pick randomly as before
         action = np.random.choice(list(node.untried_actions))

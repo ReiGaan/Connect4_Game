@@ -1,14 +1,23 @@
 from .mcts import MCTSAgent
 from game_utils import (
-    PlayerAction, PLAYER1, PLAYER2,  BoardPiece, MoveStatus, apply_player_action, check_move_status, get_opponent, check_end_state
+    PlayerAction,
+    PLAYER1,
+    PLAYER2,
+    BoardPiece,
+    MoveStatus,
+    apply_player_action,
+    check_move_status,
+    get_opponent,
+    check_end_state,
 )
 from .node import Node
 import numpy as np
 from concurrent.futures import ThreadPoolExecutor
 import cProfile
 
+
 class HierarchicalMCTSAgent(MCTSAgent):
-    """An extended MCTS agent for Connect4 with heuristic-guided simulation 
+    """An extended MCTS agent for Connect4 with heuristic-guided simulation
     and MinMax integration.
     This agent extends the base MCTSAgent by several enhancements:
     - Uses MinMax search for critical moves when the simulation depth exceeds a threshold.
@@ -32,13 +41,28 @@ class HierarchicalMCTSAgent(MCTSAgent):
         max_depth_for_minmax (int): Depth threshold for switching to MinMax in simulation.
         max_simulation_depth (int): Maximum depth for simulation rollouts.
     """
-        
-    def __init__(self, iterationnumber: int = 50, max_depth_for_minmax: int = 10, max_simulation_depth: int = 40):
+
+    def __init__(
+        self,
+        iterationnumber: int = 50,
+        max_depth_for_minmax: int = 10,
+        max_simulation_depth: int = 40,
+    ):
+        """
+        Initializes the Hierarchical MCTS agent.
+
+        Args:
+            iterationnumber (int): Number of MCTS iterations per move.
+            max_depth_for_minmax (int): Depth threshold at which to switch to MinMax search during simulation.
+            max_simulation_depth (int): Maximum depth of simulation rollouts.
+        """
         super().__init__(iterationnumber)
-        self.max_depth_for_minmax = max_depth_for_minmax 
+        self.max_depth_for_minmax = max_depth_for_minmax
         self.max_simulation_depth = max_simulation_depth
 
-    def minmax_move(self, board: np.ndarray, player: BoardPiece, root_player: BoardPiece) -> PlayerAction:
+    def minmax_move(
+        self, board: np.ndarray, player: BoardPiece, root_player: BoardPiece
+    ) -> PlayerAction:
         """
         Perform a MinMax search to find the best move for the current player.
         This function returns the action that leads to the best possible state.
@@ -49,30 +73,51 @@ class HierarchicalMCTSAgent(MCTSAgent):
         Returns:
             PlayerAction: The best action for the player based on MinMax evaluation.
         """
-        # Define the base MinMax logic (example, adjust for your game rules)
-        best_score = -float('inf')
+        best_score = -float("inf")
         best_move = None
 
         for col in range(board.shape[1]):
             if check_move_status(board, PlayerAction(col)) == MoveStatus.IS_VALID:
                 temp_board = board.copy()
                 apply_player_action(temp_board, PlayerAction(col), player)
-                score = self.minmax(temp_board, get_opponent(player), root_player=root_player, depth=7, alpha=-float('inf'), beta=float('inf'))
+                score = self.minmax(
+                    temp_board,
+                    get_opponent(player),
+                    root_player=root_player,
+                    depth=7,
+                    alpha=-float("inf"),
+                    beta=float("inf"),
+                )
                 if score > best_score:
                     best_score = score
                     best_move = PlayerAction(col)
+        # If no valid move was found, choose a random valid move (fallback action)
         if best_move is None:
-            best_move = np.random.choice([PlayerAction(col) for col in range(board.shape[1]) 
-                                  if check_move_status(board, PlayerAction(col)) == MoveStatus.IS_VALID])
+            best_move = np.random.choice(
+                [
+                    PlayerAction(col)
+                    for col in range(board.shape[1])
+                    if check_move_status(board, PlayerAction(col))
+                    == MoveStatus.IS_VALID
+                ]
+            )
 
         return best_move
 
-    def minmax(self, board: np.ndarray, player: BoardPiece, root_player: BoardPiece, depth: int, alpha: float, beta: float) -> int:
+    def minmax(
+        self,
+        board: np.ndarray,
+        player: BoardPiece,
+        root_player: BoardPiece,
+        depth: int,
+        alpha: float,
+        beta: float,
+    ) -> int:
         """
         Perform a MinMax search with a specified depth.
-        This function recursively evaluates all possible moves for the given player.
+        This function recursively evaluates all valid moves for the given player using MinMax with alpha-beta pruning.
         Args:
-            board (np.ndarray): The current game board state.               
+            board (np.ndarray): The current game board state.
             player (BoardPiece): The player for whom to evaluate moves.
             depth (int): The depth to search in the tree.
             alpha (float): The alpha value for alpha-beta pruning.
@@ -85,39 +130,53 @@ class HierarchicalMCTSAgent(MCTSAgent):
             return result[root_player]  # Evaluate from root player's perspective
 
         if depth == 0:
-           return (
-            9 * self.count_n_in_a_row(board, root_player, 3) +
-            3 * self.count_n_in_a_row(board, root_player, 2) -
-            4 * self.count_n_in_a_row(board, get_opponent(root_player), 3)
-        )
+            return (
+                9 * self.count_n_in_a_row(board, root_player, 3)
+                + 3 * self.count_n_in_a_row(board, root_player, 2)
+                - 4 * self.count_n_in_a_row(board, get_opponent(root_player), 3)
+            )
 
         if player == root_player:
-            best_score = -float('inf')
+            best_score = -float("inf")
             for col in range(board.shape[1]):
                 if check_move_status(board, PlayerAction(col)) == MoveStatus.IS_VALID:
                     temp_board = board.copy()
                     apply_player_action(temp_board, PlayerAction(col), player)
-                    score = self.minmax(temp_board, get_opponent(player), root_player, depth - 1, alpha, beta)
+                    score = self.minmax(
+                        temp_board,
+                        get_opponent(player),
+                        root_player,
+                        depth - 1,
+                        alpha,
+                        beta,
+                    )
                     best_score = max(best_score, score)
                     alpha = max(alpha, best_score)
                     if beta <= alpha:
                         break
             return best_score
         else:
-            best_score = float('inf')
+            best_score = float("inf")
             for col in range(board.shape[1]):
                 if check_move_status(board, PlayerAction(col)) == MoveStatus.IS_VALID:
                     temp_board = board.copy()
                     apply_player_action(temp_board, PlayerAction(col), player)
-                    score = self.minmax(temp_board, get_opponent(player), root_player, depth - 1, alpha, beta)
+                    score = self.minmax(
+                        temp_board,
+                        get_opponent(player),
+                        root_player,
+                        depth - 1,
+                        alpha,
+                        beta,
+                    )
                     best_score = min(best_score, score)
                     beta = min(beta, best_score)
                     if beta <= alpha:
                         break
             return best_score
-      
-    def expand_to_next_children(self,
-        player: BoardPiece, node: Node
+
+    def expand_to_next_children(
+        self, player: BoardPiece, node: Node
     ) -> tuple[PlayerAction, np.ndarray]:
         """
         Select and apply a valid move from the current node's state.
@@ -145,13 +204,18 @@ class HierarchicalMCTSAgent(MCTSAgent):
                 return action, next_state
 
         # 2. Check for opponent's immediate win (block it)
-        for action, next_state in candidate_moves:
-            for opp_action in range(next_state.shape[1]):
-                if check_move_status(next_state, PlayerAction(opp_action)) == MoveStatus.IS_VALID:
-                    opp_state = next_state.copy()
-                    apply_player_action(opp_state, opp_action, opponent)
-                    if Node(opp_state, opponent).check_terminal_state()[0]:
-                        return action, next_state
+        for opp_action in range(node.state.shape[1]):
+                if (
+                    check_move_status(node.state, PlayerAction(opp_action))
+                    == MoveStatus.IS_VALID
+                ):
+                    simulated = node.state.copy()
+                    apply_player_action(simulated, opp_action, opponent)
+                    is_terminal, result = Node(simulated, opponent).check_terminal_state()
+                    if is_terminal and result[opponent] == 1:
+                        return opp_action, apply_player_action(
+                            node.state.copy(), opp_action, player
+                        )
 
         # 3. Score remaining candidate moves
         best_score = -float("inf")
@@ -161,10 +225,9 @@ class HierarchicalMCTSAgent(MCTSAgent):
             temp_state = node.state.copy()
             apply_player_action(temp_state, int(action), player)
             try:
-                score = (
-                    9 * self.count_n_in_a_row(temp_state, player, 3) +
-                    3 * self.count_n_in_a_row(temp_state, player, 2)
-                )
+                score = 9 * self.count_n_in_a_row(
+                    temp_state, player, 3
+                ) + 3 * self.count_n_in_a_row(temp_state, player, 2)
             except Exception as e:
                 print(f"⚠️ Scoring failed on action {action}: {e}")
                 score = 0
@@ -189,44 +252,44 @@ class HierarchicalMCTSAgent(MCTSAgent):
         apply_player_action(next_state, int(action), player)
         return action, next_state
 
-    def count_n_in_a_row(self, board, player, n) -> int:
+    def count_n_in_a_row(self, board: np.ndarray, player: BoardPiece, n: int) -> int:
         """Count the number of n-in-a-row for the given player on the board.
-        Args:  
+        Args:
             board (np.ndarray): The game board.
             player (BoardPiece): The player to check for.
-            n (int): The number of pieces in a row to count.                    
-        Returns:                        
-            int: The count of n-in-a-row for the player.    
+            n (int): The number of pieces in a row to count.
+        Returns:
+            int: The count of n-in-a-row for the player.
         """
         count = 0
         rows, cols = board.shape
         # Horizontal
         for r in range(rows):
             row = board[r, :]
-            matches = np.convolve(row == player, np.ones(n, dtype=int), 'valid')
+            matches = np.convolve(row == player, np.ones(n, dtype=int), "valid")
             count += np.sum(matches == n)
         # Vertical
         for c in range(cols):
             col_arr = board[:, c]
-            matches = np.convolve(col_arr == player, np.ones(n, dtype=int), 'valid')
+            matches = np.convolve(col_arr == player, np.ones(n, dtype=int), "valid")
             count += np.sum(matches == n)
 
         # Diagonal /
-        for r in range(n-1, rows):
+        for r in range(n - 1, rows):
             for c in range(cols - n + 1):
-                if np.all([board[r-i, c+i] == player for i in range(n)]):
+                if np.all([board[r - i, c + i] == player for i in range(n)]):
                     count += 1
         # Diagonal \
         for r in range(rows - n + 1):
             for c in range(cols - n + 1):
-                if np.all([board[r+i, c+i] == player for i in range(n)]):
+                if np.all([board[r + i, c + i] == player for i in range(n)]):
                     count += 1
         return count
 
     def simulate(self, node: Node, player: BoardPiece) -> dict[BoardPiece, int]:
         """
         Heuristic-guided simulation: prefer center and create two/three-in-a-row.
-        Args: 
+        Args:
             node (Node): The node to simulate from.
             player (BoardPiece): The player to simulate for.
         Returns:
@@ -234,13 +297,13 @@ class HierarchicalMCTSAgent(MCTSAgent):
         """
         root_player = player
         node_state = node.state.copy()
-        depth = 0 
-        self.max_simulation_depth = 20
+        depth = 0
         while depth <= self.max_simulation_depth:
             valid_moves = [
-            col
-            for col in range(node_state.shape[1])
-            if check_move_status(node_state, PlayerAction(col)) == MoveStatus.IS_VALID
+                col
+                for col in range(node_state.shape[1])
+                if check_move_status(node_state, PlayerAction(col))
+                == MoveStatus.IS_VALID
             ]
             if not valid_moves:
                 return {PLAYER1: 0, PLAYER2: 0}
@@ -255,7 +318,7 @@ class HierarchicalMCTSAgent(MCTSAgent):
                     return result
 
             if depth >= self.max_depth_for_minmax:
-            # Use MinMax for critical moves when the threshold is reached
+                # Use MinMax for critical moves when the threshold is reached
                 action = self.minmax_move(node_state, player, root_player=root_player)
             else:
                 # Prefer moves that create three-in-a-row, then two-in-a-row, then center, then random
@@ -264,10 +327,9 @@ class HierarchicalMCTSAgent(MCTSAgent):
                 for action in valid_moves:
                     temp_state = node_state.copy()
                     apply_player_action(temp_state, PlayerAction(action), player)
-                    score = (
-                        9 * self.count_n_in_a_row(temp_state, player, 3) +
-                        3 * self.count_n_in_a_row(temp_state, player, 2)
-                    )
+                    score = 9 * self.count_n_in_a_row(
+                        temp_state, player, 3
+                    ) + 3 * self.count_n_in_a_row(temp_state, player, 2)
                     # Prefer center column slightly
                     if action == node_state.shape[1] // 2:
                         score += 1
@@ -285,7 +347,6 @@ class HierarchicalMCTSAgent(MCTSAgent):
                 elif state.name == "IS_DRAW":
                     return {PLAYER1: 0, PLAYER2: 0}
 
-
             player = get_opponent(player)
             depth += 1
 
@@ -294,4 +355,14 @@ class HierarchicalMCTSAgent(MCTSAgent):
         return {PLAYER1: 0, PLAYER2: 0}
 
     def __call__(self, board, player, saved_state, *args):
+        """
+        Selects a move using MCTS based on the current board and player.
+
+        Args:
+            board (np.ndarray): The current game board.
+            player (BoardPiece): The current player.
+            saved_state (Any): Persistent state between moves (not used here).
+        Returns:
+            Tuple[PlayerAction, Any]: The selected action and potentially updated state.
+        """
         return self.mcts_move(board, player, saved_state, *args)
