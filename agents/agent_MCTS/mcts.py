@@ -168,6 +168,7 @@ class MCTSAgent:
         """
         node_state = node.state.copy()
         # Note: This simulation assumes games will always terminate.
+        current_player = player
         while True:
             valid_moves = [
                 col
@@ -178,16 +179,24 @@ class MCTSAgent:
             if not valid_moves:
                 return {PLAYER1: 0, PLAYER2: 0}
 
-            action = np.random.choice(valid_moves)
-            apply_player_action(node_state, PlayerAction(action), player)
+            # Check for immediate winning move
+            for action in valid_moves:
+                temp_state = node_state.copy()
+                apply_player_action(temp_state, PlayerAction(action), current_player)
+                state = check_end_state(temp_state, current_player)
+                if state.name == "IS_WIN":
+                    return {current_player: 1, get_opponent(current_player): -1}
 
-            state = check_end_state(node_state, player)
+            action = np.random.choice(valid_moves)
+            apply_player_action(node_state, PlayerAction(action), current_player)
+
+            state = check_end_state(node_state, current_player)
             if state.name == "IS_WIN":
-                return {player: 1, get_opponent(player): -1}
+                return {current_player: 1, get_opponent(current_player): -1}
             elif state.name == "IS_DRAW":
                 return {PLAYER1: 0, PLAYER2: 0}
 
-            player = get_opponent(player)
+            current_player = get_opponent(current_player)
 
     def backpropagate(self, node: Node, result: dict[BoardPiece, int]) -> None:
         """
