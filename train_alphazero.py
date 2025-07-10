@@ -208,6 +208,7 @@ def train_alphazero(
         checkpoint_dir (str): Path to save checkpoints.
         resume_checkpoint (str or None): Resume from this checkpoint if provided.
         num_workers (int): Worker processes for data loading. Must be > 0.
+            Defaults to ``os.cpu_count() or 1``.
 
     Returns:
         model (torch.nn.Module): Trained model.
