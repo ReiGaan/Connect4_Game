@@ -190,7 +190,8 @@ def train_alphazero(
     buffer_size=10000,
     device='cpu',
     checkpoint_dir="checkpoints",
-    resume_checkpoint=None
+    resume_checkpoint=None,
+    num_workers=os.cpu_count()
 ):
     """
     Main training loop for AlphaZero including checkpointing and self-play.
@@ -206,6 +207,7 @@ def train_alphazero(
         device (str): Computation device ('cpu' or 'cuda').
         checkpoint_dir (str): Path to save checkpoints.
         resume_checkpoint (str or None): Resume from this checkpoint if provided.
+        num_workers (int): Worker processes for data loading.
 
     Returns:
         model (torch.nn.Module): Trained model.
@@ -253,7 +255,12 @@ def train_alphazero(
             sample_size = min(len(replay_buffer), 2048)
             train_data = replay_buffer.sample(sample_size)
             train_dataset = BoardDataset(train_data)
-            train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+            train_loader = DataLoader(
+                train_dataset,
+                batch_size=batch_size,
+                shuffle=True,
+                num_workers=num_workers or 0
+            )
 
             model.train()
             for epoch in range(num_epochs):
@@ -308,17 +315,22 @@ if __name__ == "__main__":
         'buffer_size': 10000,
         'device': device,
         'checkpoint_dir': "checkpoints",
-        'resume_checkpoint': "iteration_2.pt"
+        'resume_checkpoint': "iteration_2.pt",
+        'num_workers': os.cpu_count()
     }
 
     import argparse
     parser = argparse.ArgumentParser(description='AlphaZero Training')
     parser.add_argument('--resume', type=str, default=None,
                         help='Checkpoint to resume training from (e.g., iteration_10.pt)')
+    parser.add_argument('--num-workers', type=int, default=os.cpu_count(),
+                        help='Worker processes for DataLoader (default: os.cpu_count())')
     args = parser.parse_args()
 
     if args.resume:
         config['resume_checkpoint'] = args.resume
+    if args.num_workers is not None:
+        config['num_workers'] = args.num_workers
 
     trained_model = train_alphazero(**config)
 
