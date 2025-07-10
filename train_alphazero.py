@@ -298,27 +298,32 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
 
-    config = {
-        'num_iterations': 100,
-        'num_self_play_games': 100,
-        'num_epochs': 10,
-        'batch_size': 128,
-        'mcts_iterations': 100,
-        'learning_rate': 0.001,
-        'buffer_size': 10000,
-        'device': device,
-        'checkpoint_dir': "checkpoints",
-        'resume_checkpoint': "iteration_2.pt"
-    }
-
     import argparse
     parser = argparse.ArgumentParser(description='AlphaZero Training')
     parser.add_argument('--resume', type=str, default=None,
                         help='Checkpoint to resume training from (e.g., iteration_10.pt)')
+    parser.add_argument('--num-iterations', type=int, default=100,
+                        help='Total number of training iterations')
+    parser.add_argument('--num-self-play-games', type=int, default=100,
+                        help='Self-play games generated per iteration')
+    parser.add_argument('--num-epochs', type=int, default=10,
+                        help='Epochs to train per iteration')
+    parser.add_argument('--mcts-iterations', type=int, default=100,
+                        help='MCTS simulations per move during self-play')
     args = parser.parse_args()
 
-    if args.resume:
-        config['resume_checkpoint'] = args.resume
+    config = {
+        'num_iterations': args.num_iterations,
+        'num_self_play_games': args.num_self_play_games,
+        'num_epochs': args.num_epochs,
+        'batch_size': 128,
+        'mcts_iterations': args.mcts_iterations,
+        'learning_rate': 0.001,
+        'buffer_size': 10000,
+        'device': device,
+        'checkpoint_dir': "checkpoints",
+        'resume_checkpoint': args.resume
+    }
 
     trained_model = train_alphazero(**config)
 
