@@ -29,6 +29,8 @@ https://miro.com/app/board/uXjVIsyA0Qk=/
    pip install -r requirements.txt
    ```
    PyTorch will automatically use CUDA or Apple's MPS backend if available.
+   The training and inference scripts select the best device (MPS, CUDA, or CPU)
+   automatically.
 
 ### Running Simulations
 
