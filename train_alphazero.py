@@ -316,7 +316,7 @@ if __name__ == "__main__":
         'buffer_size': 10000,
         'device': device,
         'checkpoint_dir': "checkpoints",
-        'resume_checkpoint': "iteration_2.pt"
+        'resume_checkpoint': "iteration_19.pt"
     }
 
     import argparse
