@@ -9,6 +9,7 @@ from agents.agent_MCTS.mcts import MCTSAgent
 from agents.agent_MCTS.hierarchical_mcts import HierarchicalMCTSAgent
 from agents.agent_MCTS.alphazero_mcts import AlphazeroMCTSAgent
 from agents.alphazero.network import Connect4Net
+from utils.device import get_default_device
 from agents.alphazero.inference import policy_value
 import torch 
 
@@ -178,8 +179,9 @@ def run_alphazero_vs_random(num_games: int, alpha_iterations=100):
     total_metrics = GameMetrics()
     
     # Initialize agent
-    model = Connect4Net()
-    checkpoint = torch.load("checkpoints/iteration_40.pt", map_location="cpu")
+    device = get_default_device()
+    model = Connect4Net().to(device)
+    checkpoint = torch.load("checkpoints/iteration_40.pt", map_location=device)
     model.load_state_dict(checkpoint['model_state_dict'])
     model.eval()
     
@@ -264,8 +266,9 @@ def run_alphazero_vs_mcts(num_games: int, alpha_iterations=100):
     total_metrics = GameMetrics()
     
     # Initialize agent
-    model = Connect4Net()
-    checkpoint = torch.load("checkpoints/iteration_20.pt", map_location="cpu")
+    device = get_default_device()
+    model = Connect4Net().to(device)
+    checkpoint = torch.load("checkpoints/iteration_20.pt", map_location=device)
     model.load_state_dict(checkpoint['model_state_dict'])
     model.eval()
     

@@ -2,6 +2,7 @@ import torch
 from torch.utils.data import DataLoader
 import numpy as np
 from network import Connect4Net, BoardDataset, CustomLoss
+from utils.device import get_default_device
 
 
 # Generate dummy data (replace with self-play later)
@@ -29,8 +30,10 @@ data = generate_dummy_data(500)
 dataset = BoardDataset(data)
 loader = DataLoader(dataset, batch_size=32, shuffle=True)
 
+device = get_default_device()
+
 # Initialize model and training components
-model = Connect4Net()
+model = Connect4Net().to(device)
 loss_fn = CustomLoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
@@ -39,9 +42,9 @@ for epoch in range(5):  # Start with just 5 epochs
     total_loss = 0
     for batch in loader:
         states, target_policy, target_value = batch
-        states = states.float()
-        target_policy = target_policy.float()
-        target_value = target_value.float()
+        states = states.float().to(device)
+        target_policy = target_policy.float().to(device)
+        target_value = target_value.float().to(device)
 
         pred_policy, pred_value = model(states)
         loss = loss_fn(target_value, pred_value, target_policy, pred_policy)

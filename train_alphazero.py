@@ -2,6 +2,7 @@ import numpy as np
 import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset
+from utils.device import get_default_device
 import os
 import time
 from collections import deque
@@ -295,7 +296,7 @@ if __name__ == "__main__":
     """
     Entry point for training the AlphaZero model. Parses CLI arguments and starts training.
     """
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = get_default_device()
     print(f"Using device: {device}")
 
     config = {

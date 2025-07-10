@@ -1,10 +1,11 @@
 import torch
 from torch.profiler import profile, record_function, ProfilerActivity
 from agents.alphazero.network import Connect4Net
+from utils.device import get_default_device
 
 # Initialize model and dummy input
 model = Connect4Net()
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = get_default_device()
 model.to(device)
 
 # Adjust the input size based on the model's requirements
