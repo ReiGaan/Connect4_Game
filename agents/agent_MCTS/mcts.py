@@ -105,21 +105,26 @@ class MCTSAgent:
             # === BACKPROPAGATION ===
             self.backpropagate(node, result)
 
-        # fallback to random valid action if no children exist.
-        if not current_node.children:
-            print(
-                "No children found for current_node. Returning a random valid action."
+
+        if current_node.children:
+            # children is a dict: action → Node
+            best_action, best_child = max(
+                current_node.children.items(),
+                key=lambda item: item[1].visits
             )
-            valid_moves = current_node.get_valid_moves()
-            action = np.random.choice(valid_moves)
-            return action, current_node
-        most_visited = max(
-            current_node.children.items(), key=lambda item: item[1].visits
-        )
-        action = most_visited[0]
-        apply_player_action(root_node.state, action, root_player)
-        saved_state = root_node
-        return action, saved_state
+            return best_action, best_child
+
+        # Fallback if *no* children were ever created:
+        print("No children found for current_node.")
+        # you’ll need a helper to list legal columns:
+        valid_moves = [
+            col for col in range(board.shape[1])
+            if check_move_status(board, PlayerAction(col)) == MoveStatus.IS_VALID
+        ]
+        if not valid_moves:
+            print("  → No valid moves available (board full).")
+            return None, None
+        return np.random.choice(valid_moves), None
 
     def selection_process(self, node):
         """

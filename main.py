@@ -1,6 +1,6 @@
 from typing import Callable
 import time
-from game_utils import PLAYER1, PLAYER2, PLAYER1_PRINT, PLAYER2_PRINT, GameState, MoveStatus, GenMove
+from game_utils import PLAYER1, PLAYER2, PLAYER1_PRINT, PLAYER2_PRINT, GameState, MoveStatus, GenMove, get_opponent
 from game_utils import initialize_game_state, pretty_print_board, apply_player_action, check_end_state, check_move_status
 from agents.agent_human_user import user_move
 from agents.agent_random import generate_move as random_move
@@ -62,10 +62,22 @@ def human_vs_agent(
                         f'{player_name} you are playing with {PLAYER1_PRINT if player == PLAYER1 else PLAYER2_PRINT}'
                     )
 
-                action, saved_state[player] = gen_move(
+                action, new_state = gen_move(
                     board.copy(),  
                     player, saved_state[player], player_name, metrics, *args
                 )
+                # handle “no moves” sentinel
+                if action is None:
+                    if verbose:
+                        print("No valid moves left—ending game as a draw.")
+                    metrics.record_result(player_name, 'draw')
+                    metrics.record_result(player_name_map[get_opponent(player)], 'draw')
+                    playing = False
+                    break
+
+                # otherwise proceed as before
+                saved_state[player] = new_state
+
                 elapsed = time.time() - t0
                 if verbose:  # Only show move time if verbose
                     print(f'Move time: {elapsed:.3f}s')
@@ -179,7 +191,7 @@ def run_alphazero_vs_random(num_games: int, alpha_iterations=100):
     
     # Initialize agent
     model = Connect4Net()
-    checkpoint = torch.load("checkpoints/iteration_40.pt", map_location="cpu")
+    checkpoint = torch.load("checkpoints/iteration_15.pt", map_location="cpu")
     model.load_state_dict(checkpoint['model_state_dict'])
     model.eval()
     
@@ -265,7 +277,7 @@ def run_alphazero_vs_mcts(num_games: int, alpha_iterations=100):
     
     # Initialize agent
     model = Connect4Net()
-    checkpoint = torch.load("checkpoints/iteration_20.pt", map_location="cpu")
+    checkpoint = torch.load("checkpoints/iteration_15.pt", map_location="cpu")
     model.load_state_dict(checkpoint['model_state_dict'])
     model.eval()
     

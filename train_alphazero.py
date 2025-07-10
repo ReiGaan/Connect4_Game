@@ -1,4 +1,6 @@
 import os
+import glob
+import re
 import time
 import numpy as np
 import torch
@@ -130,11 +132,46 @@ def train_alphazero(
     batch_size=128,
     mcts_iterations=100,
     learning_rate=1e-3,
-    buffer_size=20000,
+    buffer_size=10000,
     device='cpu',
     checkpoint_dir="checkpoints",
     resume_checkpoint=None
 ):
+    """
+    Main training loop for AlphaZero including checkpointing and self-play.
+
+    Args:
+        num_iterations (int): Number of training iterations.
+        num_self_play_games (int): Games to generate per iteration.
+        num_epochs (int): Epochs per training step.
+        batch_size (int): Mini-batch size.
+        mcts_iterations (int): MCTS simulations per move.
+        learning_rate (float): Learning rate for optimizer.
+        buffer_size (int): Capacity of the replay buffer.
+        device (str): Computation device ('cpu' or 'cuda').
+        checkpoint_dir (str): Path to save checkpoints.
+        resume_checkpoint (str or None): Resume from this checkpoint if provided.
+
+    Returns:
+        model (torch.nn.Module): Trained model.
+    """
+
+    # ── AUTO-PICK latest checkpoint if none specified ──
+    if resume_checkpoint is None:
+        pattern = os.path.join(checkpoint_dir, "iteration_*.pt")
+        files = glob.glob(pattern)
+        if files:
+            iters = []
+            for fp in files:
+                name = os.path.basename(fp)
+                m = re.search(r"iteration_(\d+)\.pt$", name)
+                if m:
+                    iters.append(int(m.group(1)))
+            if iters:
+                latest = max(iters)
+                resume_checkpoint = f"iteration_{latest}.pt"
+                print(f"[resume] auto-detected checkpoint: {resume_checkpoint}")
+
     os.makedirs(checkpoint_dir, exist_ok=True)
     device = torch.device(device)
 
@@ -149,26 +186,29 @@ def train_alphazero(
     )
     loss_fn = CustomLoss()
     replay_buffer = ReplayBuffer(capacity=buffer_size)
-    start_iter = 0
+    start_iteration = 0
 
     # Resume logic
     if resume_checkpoint:
-        ckpt_path = os.path.join(checkpoint_dir, resume_checkpoint)
-        if os.path.exists(ckpt_path):
-            ckpt = torch.load(ckpt_path, map_location=device)
-            model.load_state_dict(ckpt['model_state_dict'])
-            optimizer.load_state_dict(ckpt['optimizer_state_dict'])
-            start_iter = ckpt['iteration'] + 1
-            buf_path = os.path.join(checkpoint_dir, f"buffer_{resume_checkpoint}")
-            if os.path.exists(buf_path):
-                replay_buffer = ReplayBuffer.load(buf_path, capacity=buffer_size)
-                print(f"Resumed from iter {start_iter}, buffer size {len(replay_buffer)}")
+        print(f"Resuming training from checkpoint: {resume_checkpoint}")
+        checkpoint_path = os.path.join(checkpoint_dir, resume_checkpoint)
+        if os.path.exists(checkpoint_path):
+            checkpoint_path = torch.load(checkpoint_path, map_location=device)
+            model.load_state_dict(checkpoint_path['model_state_dict'])
+            optimizer.load_state_dict(checkpoint_path['optimizer_state_dict'])
+            start_iteration = checkpoint_path['iteration'] + 1
+            buffer_path = os.path.join(
+                checkpoint_dir, f"buffer_{resume_checkpoint.split('_')[-1]}"
+            )
+            if os.path.exists(buffer_path):
+                replay_buffer = ReplayBuffer.load(buffer_path, capacity=buffer_size)
+                print(f"Resumed from iter {start_iteration}, buffer size {len(replay_buffer)}")
         else:
-            print(f"Warning: checkpoint {ckpt_path} not found, starting fresh.")
+            print(f"Warning: Checkpoint {checkpoint_path} not found. Starting from scratch.")
 
-    for iteration in range(start_iter, num_iterations):
-        t0 = time.time()
-        print(f"\n=== Iter {iteration+1}/{num_iterations} ===  LR={optimizer.param_groups[0]['lr']:.4f}")
+    for iteration in range(start_iteration, num_iterations):
+        start_time = time.time()
+        print(f"\n===  Iteration {iteration+1}/{num_iterations} ===  LR={optimizer.param_groups[0]['lr']:.4f}")
 
         # 1) Self-play (parallel)
         state_dict_cpu = {k: v.cpu() for k, v in model.state_dict().items()}
@@ -207,15 +247,15 @@ def train_alphazero(
         scheduler.step()
 
         # 3) Checkpoint
-        ckpt_path = os.path.join(checkpoint_dir, f"iteration_{iteration+1}.pt")
+        checkpoint_path = os.path.join(checkpoint_dir, f"iteration_{iteration+1}.pt")
         torch.save({
             'model_state_dict': model.state_dict(),
             'optimizer_state_dict': optimizer.state_dict(),
             'iteration': iteration
-        }, ckpt_path)
-        buf_path = os.path.join(checkpoint_dir, f"buffer_iteration_{iteration+1}.pt")
-        replay_buffer.save(buf_path)
-        print(f"Saved model + buffer in {time.time()-t0:.1f}s to {checkpoint_dir}")
+        }, checkpoint_path)
+        buffer_path = os.path.join(checkpoint_dir, f"buffer_iteration_{iteration+1}.pt")
+        replay_buffer.save(buffer_path)
+        print(f"Saved model + buffer in {time.time()-start_time:.1f}s to {checkpoint_dir}")
 
     return model
 
@@ -232,7 +272,8 @@ if __name__ == "__main__":
     parser.add_argument('--buffer_size', type=int,      default=20000,help='Replay buffer capacity')
     parser.add_argument('--device', type=str,           default='cpu',help='cpu or cuda')
     parser.add_argument('--checkpoint_dir', type=str,   default='checkpoints',help='Where to save')
-    parser.add_argument('--resume', type=str,           default=None, help='Checkpoint filename to resume')
+    parser.add_argument('--resume', type=str, default=None,
+                        help='Checkpoint to resume training from (e.g., iteration_10.pt)')
     args = parser.parse_args()
 
     config = {
