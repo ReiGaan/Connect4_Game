@@ -207,7 +207,7 @@ def train_alphazero(
         device (str): Computation device ('cpu' or 'cuda').
         checkpoint_dir (str): Path to save checkpoints.
         resume_checkpoint (str or None): Resume from this checkpoint if provided.
-        num_workers (int): Worker processes for data loading.
+        num_workers (int): Worker processes for data loading. Must be > 0.
 
     Returns:
         model (torch.nn.Module): Trained model.
@@ -219,6 +219,9 @@ def train_alphazero(
     loss_fn = CustomLoss()
     replay_buffer = ReplayBuffer(capacity=buffer_size)
     start_iteration = 0
+
+    if num_workers is None or num_workers <= 0:
+        num_workers = os.cpu_count() or 1
 
     if resume_checkpoint:
         print(f"Resuming training from checkpoint: {resume_checkpoint}")
@@ -316,14 +319,14 @@ if __name__ == "__main__":
         'device': device,
         'checkpoint_dir': "checkpoints",
         'resume_checkpoint': "iteration_2.pt",
-        'num_workers': os.cpu_count()
+        'num_workers': os.cpu_count() or 1
     }
 
     import argparse
     parser = argparse.ArgumentParser(description='AlphaZero Training')
     parser.add_argument('--resume', type=str, default=None,
                         help='Checkpoint to resume training from (e.g., iteration_10.pt)')
-    parser.add_argument('--num-workers', type=int, default=os.cpu_count(),
+    parser.add_argument('--num-workers', type=int, default=os.cpu_count() or 1,
                         help='Worker processes for DataLoader (default: os.cpu_count())')
     args = parser.parse_args()
 
