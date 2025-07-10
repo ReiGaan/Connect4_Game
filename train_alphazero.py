@@ -2,6 +2,7 @@ import numpy as np
 import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset
+from concurrent.futures import ProcessPoolExecutor, as_completed
 import os
 import time
 from collections import deque
@@ -180,6 +181,14 @@ def self_play(model, device, mcts_iterations=100, temperature=1.0):
     return training_data
 
 
+def _self_play_job(state_dict, mcts_iterations):
+    """Worker function to run a self-play game in a separate process."""
+    device = "cpu"
+    model = Connect4Net().to(device)
+    model.load_state_dict(state_dict)
+    return self_play(model, device, mcts_iterations)
+
+
 def train_alphazero(
     num_iterations=100,
     num_self_play_games=100,
@@ -241,12 +250,17 @@ def train_alphazero(
         start_time = time.time()
 
         print(f"Playing {num_self_play_games} self-play games...")
-        for game_idx in range(num_self_play_games):
-            game_data = self_play(model, device, mcts_iterations)
-            for experience in game_data:
-                replay_buffer.add(experience)
-
-            print(f"  Completed {game_idx+1}/{num_self_play_games} games")
+        model_state = {k: v.cpu() for k, v in model.state_dict().items()}
+        with ProcessPoolExecutor() as executor:
+            futures = [
+                executor.submit(_self_play_job, model_state, mcts_iterations)
+                for _ in range(num_self_play_games)
+            ]
+            for idx, future in enumerate(as_completed(futures), 1):
+                game_data = future.result()
+                for experience in game_data:
+                    replay_buffer.add(experience)
+                print(f"  Completed {idx}/{num_self_play_games} games")
 
         print(f"Training on {len(replay_buffer)} experiences...")
         if len(replay_buffer) > batch_size:
