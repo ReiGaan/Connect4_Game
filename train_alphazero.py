@@ -300,8 +300,12 @@ if __name__ == "__main__":
 
     import argparse
     parser = argparse.ArgumentParser(description='AlphaZero Training')
-    parser.add_argument('--resume', type=str, default=None,
-                        help='Checkpoint to resume training from (e.g., iteration_10.pt)')
+    parser.add_argument(
+        '--resume',
+        type=str,
+        default='iteration_2.pt',
+        help='Checkpoint to resume training from (e.g., iteration_10.pt)'
+    )
     parser.add_argument('--num-iterations', type=int, default=100,
                         help='Total number of training iterations')
     parser.add_argument('--num-self-play-games', type=int, default=100,
