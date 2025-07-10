@@ -1,15 +1,20 @@
-import numpy as np
-import torch
-import torch.optim as optim
-from torch.utils.data import DataLoader, Dataset
-from concurrent.futures import ProcessPoolExecutor, as_completed
 import os
 import time
+import numpy as np
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.optim as optim
+from torch.utils.data import Dataset, DataLoader
 from collections import deque
+from concurrent.futures import ProcessPoolExecutor, as_completed
+
 from game_utils import (
-    initialize_game_state, BoardPiece, PLAYER1, PLAYER2,
-    apply_player_action, check_end_state, GameState,
-    get_opponent, PlayerAction
+    initialize_game_state,
+    PLAYER1, PLAYER2,
+    apply_player_action,
+    check_end_state, GameState,
+    get_opponent
 )
 from agents.alphazero.network import Connect4Net, CustomLoss
 from agents.alphazero.inference import policy_value
@@ -17,66 +22,31 @@ from agents.agent_MCTS.alphazero_mcts import AlphazeroMCTSAgent
 
 
 class ReplayBuffer:
-    """
-    A buffer to store gameplay experiences for training the AlphaZero model.
-
-    Args:
-        capacity (int): Maximum number of experiences to store.
-    """
     def __init__(self, capacity=10000):
         self.buffer = deque(maxlen=capacity)
 
     def add(self, experience):
-        """
-        Add a game experience to the buffer.
-
-        Args:
-            experience (tuple): (state, policy, value) tuple.
-        """
+        # experience = (state: np.ndarray[3,6,7], policy: np.ndarray[7], value: float)
         self.buffer.append(experience)
 
     def sample(self, batch_size):
-        """
-        Sample a batch of experiences.
-
-        Args:
-            batch_size (int): Number of experiences to sample.
-
-        Returns:
-            List of sampled experiences.
-        """
-        indices = np.random.choice(len(self.buffer), batch_size, replace=False)
-        return [self.buffer[i] for i in indices]
+        idxs = np.random.choice(len(self.buffer), batch_size, replace=False)
+        return [self.buffer[i] for i in idxs]
 
     def __len__(self):
         return len(self.buffer)
 
     def save(self, path):
-        """
-        Save the buffer to a file.
-
-        Args:
-            path (str): File path to save the buffer.
-        """
         torch.save(list(self.buffer), path)
 
     @staticmethod
     def load(path, capacity=10000):
-        """
-        Load a buffer from a file.
-
-        Args:
-            path (str): File path to load from.
-            capacity (int): Maximum buffer capacity.
-
-        Returns:
-            ReplayBuffer: Loaded replay buffer.
-        """
-        buffer = ReplayBuffer(capacity)
+        buf = ReplayBuffer(capacity)
         if os.path.exists(path):
-            data = torch.load(path, weights_only=False)
-            buffer.buffer = deque(data, maxlen=capacity)
-        return buffer
+            data = torch.load(path)
+            buf.buffer = deque(data, maxlen=capacity)
+        return buf
+
 
 
 class BoardDataset(Dataset):
@@ -87,279 +57,198 @@ class BoardDataset(Dataset):
         data (list): List of (state, policy, value) tuples.
     """
     def __init__(self, data):
-        """Store data as tensors for faster access during training."""
-        if len(data) == 0:
-            # Create empty tensors when no data is provided
-            self.states = torch.empty((0,), dtype=torch.float32)
-            self.policies = torch.empty((0,), dtype=torch.float32)
-            self.values = torch.empty((0, 1), dtype=torch.float32)
-            return
-
-        states_list, policies_list, values_list = zip(*data)
-        self.states = torch.stack(
-            [torch.tensor(s, dtype=torch.float32) for s in states_list]
-        )
-        self.policies = torch.stack(
-            [torch.tensor(p, dtype=torch.float32) for p in policies_list]
-        )
-        self.values = torch.tensor(values_list, dtype=torch.float32).unsqueeze(1)
+        # data: list of (state, policy, value)
+        states, policies, values = zip(*data)
+        self.states = torch.stack([torch.tensor(s, dtype=torch.float32) for s in states])
+        self.policies = torch.stack([torch.tensor(p, dtype=torch.float32) for p in policies])
+        self.values = torch.tensor(values, dtype=torch.float32).unsqueeze(1)
 
     def __len__(self):
         return len(self.states)
 
     def __getitem__(self, idx):
-        """
-        Retrieve a single training sample.
+        return self.states[idx], self.policies[idx], self.values[idx]
 
-        Args:
-            idx (int): Index of the sample.
-
-        Returns:
-            tuple: (state, policy, value) tensors.
-        """
-        state = self.states[idx]
-        policy = self.policies[idx]
-        value = self.values[idx]
-        return state, policy, value
-
-
-def self_play(model, device, mcts_iterations=100, temperature=1.0):
-    """
-    Play a single self-play game using MCTS to generate training data.
-
-    Args:
-        model (torch.nn.Module): The neural network model.
-        device (str): Device to run inference on ('cpu' or 'cuda').
-        mcts_iterations (int): Number of MCTS simulations per move.
-        temperature (float): Exploration temperature.
-
-    Returns:
-        list: List of (state, policy, value) tuples.
-    """
-    board = initialize_game_state()
+    
+def self_play(model_state_dict, mcts_iterations, device='cpu'):
+    # reload model in each process
+    device = torch.device(device)
+    model = Connect4Net().to(device)
+    model.load_state_dict(model_state_dict)
     agent = AlphazeroMCTSAgent(
-        lambda state, player: policy_value(state, model, player, device),
+        lambda s, p: policy_value(s, model, p, device),
         iterationnumber=mcts_iterations
     )
-    saved_state = None
-    current_player = PLAYER1
-    game_history = []
+
+    board = initialize_game_state()
+    player = PLAYER1
+    saved = None
+    history = []
 
     while True:
-        action, saved_state = agent.mcts_move(
-            board.copy(), current_player, saved_state, "SelfPlay"
-        )
+        action, saved = agent.mcts_move(board.copy(), player, saved, "SelfPlay")
+        total = sum(c.visits for c in saved.children.values())
+        policy = np.zeros(7, dtype=np.float32)
+        for a, c in saved.children.items():
+            policy[a] = c.visits / total
 
-        total_visits = sum(child.visits for child in saved_state.children.values())
-        policy = np.zeros(7)
-        for a, child in saved_state.children.items():
-            policy[a] = child.visits / total_visits
-
-        if temperature != 1.0:
-            policy = np.power(policy, 1 / temperature)
-            policy /= np.sum(policy)
-
-        state_rep = np.stack([
-            (board == current_player).astype(np.float32),
-            (board == get_opponent(current_player)).astype(np.float32),
+        # state encoding: [3,6,7]
+        state = np.stack([
+            (board == player).astype(np.float32),
+            (board == get_opponent(player)).astype(np.float32),
             np.ones_like(board, dtype=np.float32)
         ])
 
-        game_history.append((state_rep, policy, current_player))
-
-        apply_player_action(board, action, current_player)
-
-        end_state = check_end_state(board, current_player)
-        if end_state != GameState.STILL_PLAYING:
-            winner = current_player if end_state == GameState.IS_WIN else None
+        history.append((state, policy, player))
+        apply_player_action(board, action, player)
+        end = check_end_state(board, player)
+        if end != GameState.STILL_PLAYING:
+            winner = player if end == GameState.IS_WIN else None
             break
+        player = get_opponent(player)
 
-        current_player = get_opponent(current_player)
+    # build training data + horizontal flips
+    data = []
+    for s, pol, p in history:
+        val = 0.0 if winner is None else (1.0 if winner == p else -1.0)
+        data.append((s, pol, val))
+        # flip
+        sf = np.flip(s, axis=2).copy()
+        pf = np.flip(pol).copy()
+        data.append((sf, pf, val))
 
-    training_data = []
-    for state_rep, policy, player in game_history:
-        if winner is None:
-            value = 0.0
-        elif winner == player:
-            value = 1.0
-        else:
-            value = -1.0
-        training_data.append((state_rep, policy, value))
-
-    return training_data
-
-
-def _self_play_job(state_dict, mcts_iterations):
-    """Worker function to run a self-play game in a separate process."""
-    device = "cpu"
-    model = Connect4Net().to(device)
-    model.load_state_dict(state_dict)
-    return self_play(model, device, mcts_iterations)
+    return data
 
 
+def _self_play_job(model_state_dict, mcts_iterations, device):
+    return self_play(model_state_dict, mcts_iterations, device)
+    
 def train_alphazero(
     num_iterations=100,
     num_self_play_games=100,
-    num_epochs=10,
+    num_epochs=5,
     batch_size=128,
     mcts_iterations=100,
-    learning_rate=0.001,
-    buffer_size=10000,
+    learning_rate=1e-3,
+    buffer_size=20000,
     device='cpu',
     checkpoint_dir="checkpoints",
     resume_checkpoint=None
 ):
-    """
-    Main training loop for AlphaZero including checkpointing and self-play.
-
-    Args:
-        num_iterations (int): Number of training iterations.
-        num_self_play_games (int): Games to generate per iteration.
-        num_epochs (int): Epochs per training step.
-        batch_size (int): Mini-batch size.
-        mcts_iterations (int): MCTS simulations per move.
-        learning_rate (float): Learning rate for optimizer.
-        buffer_size (int): Capacity of the replay buffer.
-        device (str): Computation device ('cpu' or 'cuda').
-        checkpoint_dir (str): Path to save checkpoints.
-        resume_checkpoint (str or None): Resume from this checkpoint if provided.
-
-    Returns:
-        model (torch.nn.Module): Trained model.
-    """
     os.makedirs(checkpoint_dir, exist_ok=True)
+    device = torch.device(device)
 
-    model = Connect4Net().to(device)
-    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+    model = Connect4Net(num_residual_layers=4).to(device)
+    optimizer = optim.Adam(
+        model.parameters(),
+        lr=learning_rate,
+        weight_decay=1e-2
+    )
+    scheduler = optim.lr_scheduler.StepLR(
+        optimizer, step_size=3, gamma=0.8
+    )
     loss_fn = CustomLoss()
     replay_buffer = ReplayBuffer(capacity=buffer_size)
-    start_iteration = 0
+    start_iter = 0
 
+    # Resume logic
     if resume_checkpoint:
-        print(f"Resuming training from checkpoint: {resume_checkpoint}")
-        checkpoint_path = os.path.join(checkpoint_dir, resume_checkpoint)
-        if os.path.exists(checkpoint_path):
-            checkpoint = torch.load(checkpoint_path, map_location=device)
-            model.load_state_dict(checkpoint['model_state_dict'])
-            optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-            start_iteration = checkpoint['iteration'] + 1
-
-            buffer_path = os.path.join(
-                checkpoint_dir, f"buffer_{resume_checkpoint.split('_')[-1]}"
-            )
-            if os.path.exists(buffer_path):
-                replay_buffer = ReplayBuffer.load(buffer_path, capacity=buffer_size)
-                print(f"Loaded replay buffer with {len(replay_buffer)} experiences")
+        ckpt_path = os.path.join(checkpoint_dir, resume_checkpoint)
+        if os.path.exists(ckpt_path):
+            ckpt = torch.load(ckpt_path, map_location=device)
+            model.load_state_dict(ckpt['model_state_dict'])
+            optimizer.load_state_dict(ckpt['optimizer_state_dict'])
+            start_iter = ckpt['iteration'] + 1
+            buf_path = os.path.join(checkpoint_dir, f"buffer_{resume_checkpoint}")
+            if os.path.exists(buf_path):
+                replay_buffer = ReplayBuffer.load(buf_path, capacity=buffer_size)
+                print(f"Resumed from iter {start_iter}, buffer size {len(replay_buffer)}")
         else:
-            print(f"Warning: Checkpoint {checkpoint_path} not found. Starting from scratch.")
+            print(f"Warning: checkpoint {ckpt_path} not found, starting fresh.")
 
-    for iteration in range(start_iteration, num_iterations):
-        print(f"\n=== Iteration {iteration+1}/{num_iterations} ===")
-        start_time = time.time()
+    for iteration in range(start_iter, num_iterations):
+        t0 = time.time()
+        print(f"\n=== Iter {iteration+1}/{num_iterations} ===  LR={optimizer.param_groups[0]['lr']:.4f}")
 
-        print(f"Playing {num_self_play_games} self-play games...")
-        model_state = {k: v.cpu() for k, v in model.state_dict().items()}
+        # 1) Self-play (parallel)
+        state_dict_cpu = {k: v.cpu() for k, v in model.state_dict().items()}
+        experiences = []
         with ProcessPoolExecutor() as executor:
             futures = [
-                executor.submit(_self_play_job, model_state, mcts_iterations)
+                executor.submit(_self_play_job, state_dict_cpu, mcts_iterations, str(device))
                 for _ in range(num_self_play_games)
             ]
-            for idx, future in enumerate(as_completed(futures), 1):
-                game_data = future.result()
-                for experience in game_data:
-                    replay_buffer.add(experience)
-                print(f"  Completed {idx}/{num_self_play_games} games")
+            for fut in as_completed(futures):
+                experiences.extend(fut.result())
 
-        print(f"Training on {len(replay_buffer)} experiences...")
-        if len(replay_buffer) > batch_size:
-            sample_size = min(len(replay_buffer), 2048)
-            train_data = replay_buffer.sample(sample_size)
-            train_dataset = BoardDataset(train_data)
-            train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+        print(f"Generated {len(experiences)} self-play samples")
+        for exp in experiences:
+            replay_buffer.add(exp)
 
+        # 2) Training epochs
+        if len(replay_buffer) >= batch_size:
+            dataset = BoardDataset(replay_buffer.sample(min(len(replay_buffer), buffer_size)))
+            loader  = DataLoader(dataset, batch_size=batch_size, shuffle=True)
             model.train()
-            for epoch in range(num_epochs):
+            for epoch in range(1, num_epochs+1):
                 epoch_loss = 0.0
-                for states, policies, values in train_loader:
-                    states = states.to(device)
-                    policies = policies.to(device)
-                    values = values.to(device)
-
-                    pred_policies, pred_values = model(states)
-                    loss = loss_fn(values, pred_values, policies, pred_policies)
-
+                for states, policies, values in loader:
+                    states, policies, values = states.to(device), policies.to(device), values.to(device)
+                    pred_p, pred_v = model(states)
+                    loss = loss_fn(values, pred_v, policies, pred_p)
                     optimizer.zero_grad()
                     loss.backward()
+                    torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
                     optimizer.step()
-
                     epoch_loss += loss.item()
-                print(f"  Epoch {epoch+1}/{num_epochs} - Loss: {epoch_loss / len(train_loader):.4f}")
+                avg = epoch_loss / len(loader)
+                print(f"  Epoch {epoch}/{num_epochs} — Loss: {avg:.4f}")
 
-        checkpoint_path = os.path.join(checkpoint_dir, f"iteration_{iteration+1}.pt")
-        buffer_path = os.path.join(checkpoint_dir, f"buffer_{iteration+1}.pt")
+        scheduler.step()
 
+        # 3) Checkpoint
+        ckpt_path = os.path.join(checkpoint_dir, f"iteration_{iteration+1}.pt")
         torch.save({
             'model_state_dict': model.state_dict(),
             'optimizer_state_dict': optimizer.state_dict(),
-            'iteration': iteration,
-        }, checkpoint_path)
-
-        replay_buffer.save(buffer_path)
-
-        print(f"Saved checkpoint to {checkpoint_path}")
-        print(f"Saved replay buffer to {buffer_path}")
-        print(f"Iteration completed in {time.time() - start_time:.2f} seconds")
+            'iteration': iteration
+        }, ckpt_path)
+        buf_path = os.path.join(checkpoint_dir, f"buffer_iteration_{iteration+1}.pt")
+        replay_buffer.save(buf_path)
+        print(f"Saved model + buffer in {time.time()-t0:.1f}s to {checkpoint_dir}")
 
     return model
 
 
 if __name__ == "__main__":
-    """
-    Entry point for training the AlphaZero model. Parses CLI arguments and starts training.
-    """
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"Using device: {device}")
-
-    config = {
-        'num_iterations': 100,
-        'num_self_play_games': 100,
-        'num_epochs': 10,
-        'batch_size': 128,
-        'mcts_iterations': 100,
-        'learning_rate': 0.001,
-        'buffer_size': 10000,
-        'device': device,
-        'checkpoint_dir': "checkpoints",
-        'resume_checkpoint': "iteration_19.pt"
-    }
-
     import argparse
-    parser = argparse.ArgumentParser(description='AlphaZero Training')
-    parser.add_argument('--resume', type=str, default=None,
-                        help='Checkpoint to resume training from (e.g., iteration_10.pt)')
-    parser.add_argument('--num-iterations', type=int, default=None,
-                        help='Total number of training iterations')
-    parser.add_argument('--num-self-play-games', type=int, default=None,
-                        help='Self-play games generated per iteration')
-    parser.add_argument('--num-epochs', type=int, default=None,
-                        help='Epochs to train per iteration')
-    parser.add_argument('--mcts-iterations', type=int, default=None,
-                        help='MCTS simulations per move during self-play')
+    parser = argparse.ArgumentParser(description="Train Connect4 AlphaZero")
+    parser.add_argument('--iterations', type=int,       default=100, help='Training iterations')
+    parser.add_argument('--self_play_games', type=int,  default=100, help='Games per iteration')
+    parser.add_argument('--epochs', type=int,           default=5,   help='Epochs per iteration')
+    parser.add_argument('--batch_size', type=int,       default=128, help='Batch size')
+    parser.add_argument('--mcts_iters', type=int,       default=100, help='MCTS simulations')
+    parser.add_argument('--lr', type=float,             default=1e-3,help='Learning rate')
+    parser.add_argument('--buffer_size', type=int,      default=20000,help='Replay buffer capacity')
+    parser.add_argument('--device', type=str,           default='cpu',help='cpu or cuda')
+    parser.add_argument('--checkpoint_dir', type=str,   default='checkpoints',help='Where to save')
+    parser.add_argument('--resume', type=str,           default=None, help='Checkpoint filename to resume')
     args = parser.parse_args()
 
-    if args.resume is not None:
-        config['resume_checkpoint'] = args.resume
-    if args.num_iterations is not None:
-        config['num_iterations'] = args.num_iterations
-    if args.num_self_play_games is not None:
-        config['num_self_play_games'] = args.num_self_play_games
-    if args.num_epochs is not None:
-        config['num_epochs'] = args.num_epochs
-    if args.mcts_iterations is not None:
-        config['mcts_iterations'] = args.mcts_iterations
+    config = {
+        'num_iterations':       args.iterations,
+        'num_self_play_games':  args.self_play_games,
+        'num_epochs':           args.epochs,
+        'batch_size':           args.batch_size,
+        'mcts_iterations':      args.mcts_iters,
+        'learning_rate':        args.lr,
+        'buffer_size':          args.buffer_size,
+        'device':               args.device,
+        'checkpoint_dir':       args.checkpoint_dir,
+        'resume_checkpoint':    args.resume
+    }
 
     trained_model = train_alphazero(**config)
-
-    final_model_path = "alphazero_final_model.pt"
-    torch.save(trained_model.state_dict(), final_model_path)
-    print(f"Training complete! Saved final model as {final_model_path}")
+    final_path = os.path.join(args.checkpoint_dir, "final_model.pt")
+    torch.save(trained_model.state_dict(), final_path)
+    print(f"\nTraining complete. Final model saved to {final_path}")
