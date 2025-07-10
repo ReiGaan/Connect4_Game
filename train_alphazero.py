@@ -128,11 +128,11 @@ def _self_play_job(model_state_dict, mcts_iterations, device):
 def train_alphazero(
     num_iterations=100,
     num_self_play_games=100,
-    num_epochs=5,
+    num_epochs=10,
     batch_size=128,
     mcts_iterations=100,
     learning_rate=1e-3,
-    buffer_size=10000,
+    buffer_size=20000,
     device='cpu',
     checkpoint_dir="checkpoints",
     resume_checkpoint=None
@@ -182,7 +182,7 @@ def train_alphazero(
         weight_decay=1e-2
     )
     scheduler = optim.lr_scheduler.StepLR(
-        optimizer, step_size=3, gamma=0.8
+        optimizer, step_size=10, gamma=0.8
     )
     loss_fn = CustomLoss()
     replay_buffer = ReplayBuffer(capacity=buffer_size)
@@ -190,7 +190,7 @@ def train_alphazero(
 
     # Resume logic
     if resume_checkpoint:
-        print(f"Resuming training from checkpoint: {resume_checkpoint}")
+        # print(f"Resuming training from checkpoint: {resume_checkpoint}")
         checkpoint_path = os.path.join(checkpoint_dir, resume_checkpoint)
         if os.path.exists(checkpoint_path):
             checkpoint_path = torch.load(checkpoint_path, map_location=device)

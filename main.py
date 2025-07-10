@@ -277,7 +277,7 @@ def run_alphazero_vs_mcts(num_games: int, alpha_iterations=100):
     
     # Initialize agent
     model = Connect4Net()
-    checkpoint = torch.load("checkpoints/iteration_15.pt", map_location="cpu")
+    checkpoint = torch.load("checkpoints/iteration_20.pt", map_location="cpu")
     model.load_state_dict(checkpoint['model_state_dict'])
     model.eval()
     
