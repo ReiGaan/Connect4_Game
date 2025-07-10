@@ -6,9 +6,9 @@ import os
 import time
 from collections import deque
 from game_utils import (
-    initialize_game_state, PLAYER1,
+    initialize_game_state, BoardPiece, PLAYER1, PLAYER2,
     apply_player_action, check_end_state, GameState,
-    get_opponent
+    get_opponent, PlayerAction
 )
 from agents.alphazero.network import Connect4Net, CustomLoss
 from agents.alphazero.inference import policy_value
@@ -141,9 +141,7 @@ def self_play(model, device, mcts_iterations=100, temperature=1.0):
             board.copy(), current_player, saved_state, "SelfPlay"
         )
 
-        total_visits = sum(
-            child.visits for child in saved_state.children.values()
-        )
+        total_visits = sum(child.visits for child in saved_state.children.values())
         policy = np.zeros(7)
         for a, child in saved_state.children.items():
             policy[a] = child.visits / total_visits
@@ -193,7 +191,7 @@ def train_alphazero(
     device='cpu',
     checkpoint_dir="checkpoints",
     resume_checkpoint=None,
-    num_workers=os.cpu_count()
+    num_workers=os.cpu_count() or 1
 ):
     """
     Main training loop for AlphaZero including checkpointing and self-play.
@@ -208,10 +206,8 @@ def train_alphazero(
         buffer_size (int): Capacity of the replay buffer.
         device (str): Computation device ('cpu' or 'cuda').
         checkpoint_dir (str): Path to save checkpoints.
-        resume_checkpoint (str or None):
-            Resume from this checkpoint if provided.
-        num_workers (int): Worker processes for data loading. Must be > 0.
-            Defaults to ``os.cpu_count() or 1``.
+        resume_checkpoint (str or None): Resume from this checkpoint if provided.
+        num_workers (int): Processes for DataLoader. Must be positive.
 
     Returns:
         model (torch.nn.Module): Trained model.
@@ -240,18 +236,10 @@ def train_alphazero(
                 checkpoint_dir, f"buffer_{resume_checkpoint.split('_')[-1]}"
             )
             if os.path.exists(buffer_path):
-                replay_buffer = ReplayBuffer.load(
-                    buffer_path, capacity=buffer_size
-                )
-                print(
-                    "Loaded replay buffer with "
-                    f"{len(replay_buffer)} experiences"
-                )
+                replay_buffer = ReplayBuffer.load(buffer_path, capacity=buffer_size)
+                print(f"Loaded replay buffer with {len(replay_buffer)} experiences")
         else:
-            print(
-                "Warning: Checkpoint "
-                f"{checkpoint_path} not found. Starting from scratch."
-            )
+            print(f"Warning: Checkpoint {checkpoint_path} not found. Starting from scratch.")
 
     for iteration in range(start_iteration, num_iterations):
         print(f"\n=== Iteration {iteration+1}/{num_iterations} ===")
@@ -274,7 +262,7 @@ def train_alphazero(
                 train_dataset,
                 batch_size=batch_size,
                 shuffle=True,
-                num_workers=num_workers
+                num_workers=num_workers,
             )
 
             model.train()
@@ -286,27 +274,17 @@ def train_alphazero(
                     values = values.to(device)
 
                     pred_policies, pred_values = model(states)
-                    loss = loss_fn(
-                        values, pred_values, policies, pred_policies
-                    )
+                    loss = loss_fn(values, pred_values, policies, pred_policies)
 
                     optimizer.zero_grad()
                     loss.backward()
                     optimizer.step()
 
                     epoch_loss += loss.item()
-                print(
-                    "  Epoch "
-                    f"{epoch+1}/{num_epochs} - Loss: "
-                    f"{epoch_loss / len(train_loader):.4f}"
-                )
+                print(f"  Epoch {epoch+1}/{num_epochs} - Loss: {epoch_loss / len(train_loader):.4f}")
 
-        checkpoint_path = os.path.join(
-            checkpoint_dir, f"iteration_{iteration+1}.pt"
-        )
-        buffer_path = os.path.join(
-            checkpoint_dir, f"buffer_{iteration+1}.pt"
-        )
+        checkpoint_path = os.path.join(checkpoint_dir, f"iteration_{iteration+1}.pt")
+        buffer_path = os.path.join(checkpoint_dir, f"buffer_{iteration+1}.pt")
 
         torch.save({
             'model_state_dict': model.state_dict(),
@@ -324,9 +302,8 @@ def train_alphazero(
 
 
 if __name__ == "__main__":
-    """Entry point for training the AlphaZero model.
-
-    Parses CLI arguments and starts training.
+    """
+    Entry point for training the AlphaZero model. Parses CLI arguments and starts training.
     """
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
@@ -342,7 +319,7 @@ if __name__ == "__main__":
         'device': device,
         'checkpoint_dir': "checkpoints",
         'resume_checkpoint': "iteration_2.pt",
-        'num_workers': os.cpu_count() or 1
+        'num_workers': os.cpu_count() or 1,
     }
 
     import argparse
@@ -357,7 +334,7 @@ if __name__ == "__main__":
         '--num-workers',
         type=int,
         default=os.cpu_count() or 1,
-        help='Worker processes for DataLoader (default: os.cpu_count())'
+        help='Parallel DataLoader workers (default: os.cpu_count())'
     )
     args = parser.parse_args()
 
