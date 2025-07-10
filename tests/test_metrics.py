@@ -269,4 +269,4 @@ def test_plot_move_duration_distribution_no_moves(capsys):
     gm.add_agent("Empty")
     gm.plot_move_duration_distribution("Empty")
     captured = capsys.readouterr()
-    assert "No move times recorded for agent 'EmptyAgent'" in captured.out
+    assert "No move times recorded for agent 'Empty'" in captured.out
