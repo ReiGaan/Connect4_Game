@@ -132,7 +132,7 @@ def train_alphazero(
     batch_size=128,
     mcts_iterations=100,
     learning_rate=1e-3,
-    buffer_size=20000,
+    buffer_size=10000,
     device='cpu',
     checkpoint_dir="checkpoints",
     resume_checkpoint=None
