@@ -114,5 +114,5 @@ class CustomLoss(nn.Module):
         target_policy = target_policy.to(predicted_policy.device)
         value_loss = (predicted_value - target_value) ** 2
         policy_loss = torch.sum(
-            -target_policy * torch.log(predicted_policy + 1e-8), dim=1        )
+        return (value_loss.view(-1) + policy_loss).mean()
         return (value_loss.view(-1) + policy_loss).mean()

@@ -26,4 +26,4 @@ with profile(
         output = model(dummy_input)
 
 # Write profiling results to a file
-with open('gpu_profile_results.log', 'w') as log_file:    log_file.write(prof.key_averages().table(sort_by="cuda_time_total", row_limit=10))
+    log_file.write(prof.key_averages().table(sort_by="cuda_time_total", row_limit=10))
