@@ -53,8 +53,9 @@ class AlphazeroMCTSAgent(MCTSAgent):
             return node.result
 
         _, value = self.policy_value(node.state, node.player)
-        # Return value from the root player’s perspective
-        return {PLAYER1: value, PLAYER2: 1 - value}
+        # The network's value is from the perspective of the player to move.
+        # Convert it into per‑player scores for backpropagation.
+        return {player: value, get_opponent(player): -value}
 
     def selection_process(self, node: Node) -> Node:
         """
