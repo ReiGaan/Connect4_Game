@@ -259,7 +259,7 @@ def train_alphazero(
                 train_dataset,
                 batch_size=batch_size,
                 shuffle=True,
-                num_workers=num_workers or 0
+                num_workers=num_workers
             )
 
             model.train()
