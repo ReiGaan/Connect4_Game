@@ -86,14 +86,22 @@ class BoardDataset(Dataset):
         data (list): List of (state, policy, value) tuples.
     """
     def __init__(self, data):
-        self.states = []
-        self.policies = []
-        self.values = []
+        """Store data as tensors for faster access during training."""
+        if len(data) == 0:
+            # Create empty tensors when no data is provided
+            self.states = torch.empty((0,), dtype=torch.float32)
+            self.policies = torch.empty((0,), dtype=torch.float32)
+            self.values = torch.empty((0, 1), dtype=torch.float32)
+            return
 
-        for state, policy, value in data:
-            self.states.append(state)
-            self.policies.append(policy)
-            self.values.append(value)
+        states_list, policies_list, values_list = zip(*data)
+        self.states = torch.stack(
+            [torch.tensor(s, dtype=torch.float32) for s in states_list]
+        )
+        self.policies = torch.stack(
+            [torch.tensor(p, dtype=torch.float32) for p in policies_list]
+        )
+        self.values = torch.tensor(values_list, dtype=torch.float32).unsqueeze(1)
 
     def __len__(self):
         return len(self.states)
@@ -108,9 +116,9 @@ class BoardDataset(Dataset):
         Returns:
             tuple: (state, policy, value) tensors.
         """
-        state = torch.tensor(self.states[idx], dtype=torch.float32)
-        policy = torch.tensor(self.policies[idx], dtype=torch.float32)
-        value = torch.tensor([self.values[idx]], dtype=torch.float32)
+        state = self.states[idx]
+        policy = self.policies[idx]
+        value = self.values[idx]
         return state, policy, value
 
 
