@@ -2,6 +2,7 @@ from typing import Callable, Optional, Any
 from enum import Enum
 import numpy as np
 import scipy.signal
+from .metrics.metrics import GameMetrics
 
 BOARD_COLS = 7
 BOARD_ROWS = 6
@@ -63,14 +64,8 @@ class SavedState:
 
 
 GenMove = Callable[
-    [
-        np.ndarray,
-        BoardPiece,
-        Optional[SavedState],
-    ],  # Arguments for the generate_move function
-    tuple[
-        PlayerAction, Optional[SavedState]
-    ],  # Return type of the generate_move function
+    [np.ndarray, BoardPiece, 'SavedState | None', str, 'GameMetrics | None'],
+    tuple['PlayerAction', 'SavedState | None']
 ]
 
 
