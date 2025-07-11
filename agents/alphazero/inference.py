@@ -22,8 +22,8 @@ def policy_value(
     """
     model.eval()
 
-    opponent_player = get_opponent(current_player)
 
+    opponent_player = get_opponent(np.int8(current_player))
     # Create planes
     plane_current = (state == current_player).astype(np.float32)
     plane_opponent = (state == opponent_player).astype(np.float32)
