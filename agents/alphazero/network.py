@@ -74,7 +74,7 @@ class CustomLoss(nn.Module):
         super().__init__()
         
     def forward(self, target_value, pred_value, target_policy, pred_policy):
-        # value: [B,1], policy: [B,7]
+
         value_loss = F.mse_loss(pred_value, target_value)
         policy_loss = torch.sum(-target_policy * torch.log(pred_policy + 1e-8), dim=1).mean()
         return value_loss + policy_loss

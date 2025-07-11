@@ -1,4 +1,5 @@
 import os
+from typing import Optional
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.ticker import PercentFormatter
@@ -145,7 +146,7 @@ class GameMetrics:
         if not move_times:
             # Historical tests expect the message to include the 'Agent' suffix
             # regardless of the provided name.
-            print(f"No move times recorded for agent '{agent_name}Agent'")
+            print(f"No move times recorded for agent '{agent_name}'")
             return
 
         plt.figure(figsize=(8, 5))
@@ -205,7 +206,7 @@ class GameMetrics:
     
 
 
-    def plot_results(self, save_path: str = None, show: bool = True):
+    def plot_results(self, save_path: Optional[str] = None, show: bool = True):
         """
         Generates visualizations of agent performance.
         
