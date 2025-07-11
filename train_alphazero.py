@@ -81,15 +81,28 @@ def self_play(model: torch.nn.Module, device: torch.device, mcts_iterations: int
 
     # Play until terminal
     while True:
-        action, saved = agent.mcts_move(board.copy(), current_player, saved, "SelfPlay")
+        action, next_node = agent.mcts_move(board.copy(), current_player, saved, "SelfPlay")
 
-        # Build policy from visit counts
-        visits = np.array([child.visits for child in saved.children.values()], dtype=np.float32)
-        actions = list(saved.children.keys())
-        policy = np.zeros(BOARD_COLS, dtype=np.float32)
-        total_visits = visits.sum()
-        for a, v in zip(actions, visits):
-            policy[a] = v / total_visits
+        # Safely handle cases where no node is returned
+        root_node = next_node.parent if next_node is not None else None
+
+        # Build policy from visit counts using the search root
+        if root_node is not None and root_node.children:
+            visits = np.array(
+                [child.visits for child in root_node.children.values()], dtype=np.float32
+            )
+            actions = list(root_node.children.keys())
+            policy = np.zeros(BOARD_COLS, dtype=np.float32)
+            total_visits = visits.sum()
+            if total_visits > 0:
+                for a, v in zip(actions, visits):
+                    policy[a] = v / total_visits
+        else:
+            # Default to a uniform policy if visit information is unavailable
+            policy = np.full(BOARD_COLS, 1.0 / BOARD_COLS, dtype=np.float32)
+
+        # Keep the returned best child for next iteration
+        saved = next_node
 
         # Record current position
         state_planes = np.stack([

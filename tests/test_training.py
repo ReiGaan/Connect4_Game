@@ -261,3 +261,47 @@ def test_custom_loss_policy_improvement():
     loss_close = loss_fn(target_value, pred_value, target_policy, pred_policy_close)
 
     assert loss_close < loss_far
+
+
+def test_self_play_policy_from_root(monkeypatch):
+    """Policy returned by self_play should use visit counts from the root node."""
+    import train_alphazero as ta
+    from agents.agent_MCTS.node import Node
+    from game_utils import (
+        initialize_game_state,
+        apply_player_action,
+        get_opponent,
+        GameState,
+    )
+
+    class DummyAgent:
+        def __init__(self, pv, iterationnumber=100):
+            pass
+
+        def mcts_move(self, board, player, saved_state, mode):
+            root = Node(board, player, None)
+            b0 = board.copy()
+            b1 = board.copy()
+            apply_player_action(b0, 0, player)
+            apply_player_action(b1, 1, player)
+            child0 = root.expand(0, b0, get_opponent(player))
+            child1 = root.expand(1, b1, get_opponent(player))
+            child0.visits = 20
+            child1.visits = 10
+            # Child node with its own visits
+            b2 = child0.state.copy()
+            apply_player_action(b2, 2, get_opponent(player))
+            grandchild = child0.expand(2, b2, player)
+            grandchild.visits = 5
+            return 0, child0
+
+    monkeypatch.setattr(ta, "AlphazeroMCTSAgent", DummyAgent)
+    monkeypatch.setattr(ta, "check_end_state", lambda board, player: GameState.IS_WIN)
+
+    model = torch.nn.Linear(1, 1)
+    device = torch.device("cpu")
+    data = ta.self_play(model, device, mcts_iterations=1)
+
+    policy = data[0][1]
+    assert np.isclose(policy[0], 20 / 30)
+    assert np.isclose(policy[1], 10 / 30)
