@@ -2,7 +2,10 @@ from typing import Callable, Optional, Any
 from enum import Enum
 import numpy as np
 import scipy.signal
-from .metrics.metrics import GameMetrics
+from metrics.metrics import GameMetrics
+
+
+
 
 BOARD_COLS = 7
 BOARD_ROWS = 6
@@ -64,8 +67,8 @@ class SavedState:
 
 
 GenMove = Callable[
-    [np.ndarray, BoardPiece, 'SavedState | None', str, 'GameMetrics | None'],
-    tuple['PlayerAction', 'SavedState | None']
+    [np.ndarray, BoardPiece, Optional[SavedState]],  # Arguments for the generate_move function
+    tuple[PlayerAction, Optional[SavedState]]  # Return type of the generate_move function
 ]
 
 
@@ -124,23 +127,19 @@ def string_to_board(pp_board: str) -> np.ndarray:
         board (np.ndarray): A 2D NumPy array representing the game board, where each cell contains a value corresponding to a player or empty space.
     
     """
-    char_to_piece = {
-        NO_PLAYER_PRINT: NO_PLAYER,
-        PLAYER1_PRINT: PLAYER1,
-        PLAYER2_PRINT: PLAYER2,
-    }
+    rows = pp_board.split("\n")
+    board_rows = rows[1:-2]
+ 
+    original_mapping = {" ": 0, "X": 1, "O": 2}
+    original_board = []
 
-    pp_board = pp_board.splitlines()
-    board_array = np.zeros(BOARD_SHAPE, dtype=int)
-
-    for i, row in enumerate(pp_board[1:-2]):
-        column = 0
-        for j, cell in enumerate(row[1:-1]):
-            if j % 2 == 0:
-                board_array[i, column] = char_to_piece[cell]
-                column += 1
-    return board_array
-
+    for row in board_rows:
+        lines = []
+        for cell in row[1:-1:2]:
+            lines.append(original_mapping[cell])
+        original_board.append(lines)
+    
+    return np.array(original_board[::-1], dtype=BoardPiece)   
 
 def apply_player_action(board: np.ndarray, action: PlayerAction, player: BoardPiece):
     """
@@ -198,7 +197,7 @@ def test_connect_horizontal(board: np.ndarray, player: BoardPiece) -> bool:
     # Convolve mask with kernel
     conv = scipy.signal.convolve2d(mask, kernel, mode="valid")
     # Check if any value is 4 (i.e., four in a row)
-    return np.any(conv == 4)
+    return bool(np.any(conv == 4))
 
 
 def test_connect_vertical(board: np.ndarray, player: BoardPiece) -> bool:
@@ -236,7 +235,7 @@ def test_connect_diagonal(board: np.ndarray, player: BoardPiece) -> bool:
     kernel_bottom_left = np.fliplr(kernel_top_left)
     conv_main = scipy.signal.convolve2d(mask, kernel_top_left, mode="valid")
     conv_anti = scipy.signal.convolve2d(mask, kernel_bottom_left, mode="valid")
-    return np.any(conv_main == 4) or np.any(conv_anti == 4)
+    return bool(np.any(conv_main == 4)) or bool(np.any(conv_anti == 4))
 
 
 def check_end_state(board: np.ndarray, player: BoardPiece) -> GameState:
@@ -297,7 +296,7 @@ def check_move_status(board: np.ndarray, column: Any) -> MoveStatus:
     """
 
     # Check Type of column
-    if not isinstance(column, PlayerAction):
+    if not isinstance(column, (int, np.integer)):
         return MoveStatus.WRONG_TYPE
 
     # Check if the column is within bounds
