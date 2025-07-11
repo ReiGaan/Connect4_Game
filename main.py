@@ -1,16 +1,50 @@
-from typing import Callable
+# Typing and system utilities
+from typing import Callable, Optional
 import time
-from game_utils import PLAYER1, PLAYER2, PLAYER1_PRINT, PLAYER2_PRINT, GameState, MoveStatus, GenMove, get_opponent
-from game_utils import initialize_game_state, pretty_print_board, apply_player_action, check_end_state, check_move_status
+import torch
+
+# Game constants and utility functions
+from game_utils import (
+    PLAYER1, PLAYER2, 
+    PLAYER1_PRINT, PLAYER2_PRINT,
+    GameState, MoveStatus, GenMove, PlayerAction,
+    get_opponent, initialize_game_state, pretty_print_board, 
+    apply_player_action, check_end_state, check_move_status
+)
+
 from agents.agent_human_user import user_move
 from agents.agent_random import generate_move as random_move
-from metrics.metrics import GameMetrics
+
 from agents.agent_MCTS.mcts import MCTSAgent
 from agents.agent_MCTS.hierarchical_mcts import HierarchicalMCTSAgent
 from agents.agent_MCTS.alphazero_mcts import AlphazeroMCTSAgent
+
+
 from agents.alphazero.network import Connect4Net
 from agents.alphazero.inference import policy_value
-import torch 
+from agents.alphazero.train_dummy_data import generate_dummy_data
+
+from metrics.metrics import GameMetrics
+
+
+
+# Dummy policy-value function for vanilla MCTS (no neural net)
+def dummy_policy_value(state, player):
+    valid_moves = [col for col in range(state.shape[1])
+                   if check_move_status(state, PlayerAction(col)) == MoveStatus.IS_VALID]
+    if not valid_moves:
+        return {}, 0.0
+    policy = {a: 1/len(valid_moves) for a in valid_moves}
+    return policy, 0.0
+
+# Create a vanilla MCTS agent instance
+mcts_agent = MCTSAgent(dummy_policy_value, iterationnumber=100)
+
+# Function with correct signature to use in human_vs_agent
+def mcts_move(
+    board, player, saved_state, player_name, metrics=None, *args
+):
+    return mcts_agent(board, player, saved_state, player_name, metrics)
 
 
 def human_vs_agent(
@@ -22,7 +56,7 @@ def human_vs_agent(
     args_2: tuple = (),
     init_1: Callable = lambda board, player: None,
     init_2: Callable = lambda board, player: None,
-    metrics: GameMetrics = None,
+    metrics: Optional[GameMetrics] = None,
     verbose: bool = True  # Added verbose parameter to control output
 ) -> tuple:
     """Run a game between two agents with integrated metrics tracking"""
@@ -146,7 +180,7 @@ def run_mcts_vs_random(num_games: int = 100):
        
         # Show board for first game, then just progress
         verbose = (i == 0)
-        results = human_vs_agent(generate_move_1=MCTSAgent(100), 
+        results = human_vs_agent(generate_move_1= mcts_move, 
                                 generate_move_2=random_move, 
                                 player_1="MCTS Agent", 
                                 player_2="Random Agent",
