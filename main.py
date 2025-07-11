@@ -191,13 +191,13 @@ def run_alphazero_vs_random(num_games: int, alpha_iterations=100):
     
     # Initialize agent
     model = Connect4Net()
-    checkpoint = torch.load("checkpoints/iteration_15.pt", map_location="cpu")
+    checkpoint = torch.load(f"checkpoints/iteration_{alpha_iterations}.pt", map_location="cpu")
     model.load_state_dict(checkpoint['model_state_dict'])
     model.eval()
     
     alpha_agent = AlphazeroMCTSAgent(
         policy_value=lambda state, player: policy_value(state, model, player),
-        iterationnumber=alpha_iterations
+        iterationnumber=100
     )
     
     # Track results
@@ -277,13 +277,13 @@ def run_alphazero_vs_mcts(num_games: int, alpha_iterations=100):
     
     # Initialize agent
     model = Connect4Net()
-    checkpoint = torch.load("checkpoints/iteration_1.pt", map_location="cpu")
+    checkpoint = torch.load(f"checkpoints/iteration_{alpha_iterations}.pt", map_location="cpu")
     model.load_state_dict(checkpoint['model_state_dict'])
     model.eval()
     
     alpha_agent = AlphazeroMCTSAgent(
         policy_value=lambda state, player: policy_value(state, model, player),
-        iterationnumber=alpha_iterations
+        iterationnumber=100
     )
     
     # Track results
@@ -423,10 +423,15 @@ if __name__ == "__main__":
         )
     elif mode == "7":
         num_games = int(input("How many games to play? "))
-        metrics = run_alphazero_vs_random(num_games)
+        # metrics = run_alphazero_vs_random(num_games)
+        iter_num = int(input("Which AlphaZero iteration to evaluate? "))
+        metrics = run_alphazero_vs_random(num_games, alpha_iterations=iter_num)
     elif mode == "8":
         num_games = int(input("How many games to play? "))
-        metrics = run_alphazero_vs_mcts(num_games)
+        # metrics = run_alphazero_vs_mcts(num_games)
+        iter_num = int(input("Which AlphaZero iteration to evaluate? "))
+        metrics = run_alphazero_vs_mcts(num_games, alpha_iterations=iter_num)
+
     else:
         print("Invalid selection.")
         exit()
